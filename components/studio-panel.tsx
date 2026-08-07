@@ -1,6 +1,6 @@
 'use client'
 
-import * as React from 'react'
+import { useState, type ComponentType } from 'react'
 import {
   AudioLines,
   FileText,
@@ -30,7 +30,7 @@ const generators: {
   kind: StudioArtifactKind
   label: string
   hint: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: ComponentType<{ className?: string }>
 }[] = [
   {
     kind: 'audio',
@@ -67,7 +67,7 @@ const generators: {
 
 const artifactIcons: Record<
   StudioArtifactKind,
-  React.ComponentType<{ className?: string }>
+  ComponentType<{ className?: string }>
 > = {
   audio: AudioLines,
   briefing: FileText,
@@ -79,7 +79,7 @@ const artifactIcons: Record<
 
 export function StudioPanel({ notebook }: { notebook: Notebook }) {
   const { generateArtifact, removeArtifact } = useNotebookStore()
-  const [pending, setPending] = React.useState<StudioArtifactKind | null>(null)
+  const [pending, setPending] = useState<StudioArtifactKind | null>(null)
 
   const selectedCount = notebook.sources.filter((s) => s.selected).length
   const audioArtifact = notebook.artifacts.find((a) => a.kind === 'audio')

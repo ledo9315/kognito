@@ -1,6 +1,6 @@
 'use client'
 
-import * as React from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Files, MessageSquare, Wand2 } from 'lucide-react'
 import { useNotebookStore } from '@/components/notebook-store'
@@ -25,7 +25,7 @@ type MobileTab = 'sources' | 'chat' | 'studio'
 export function NotebookWorkspace({ notebookId }: { notebookId: string }) {
   const { getNotebook, state, openSource } = useNotebookStore()
   const notebook = getNotebook(notebookId)
-  const [mobileTab, setMobileTab] = React.useState<MobileTab>('chat')
+  const [mobileTab, setMobileTab] = useState<MobileTab>('chat')
 
   if (!notebook) {
     return (

@@ -1,6 +1,6 @@
 'use client'
 
-import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Pause, Play, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
@@ -20,10 +20,10 @@ export function AudioPlayer({
   meta: string
   notebookTitle: string
 }) {
-  const [playing, setPlaying] = React.useState(false)
-  const [position, setPosition] = React.useState(0)
+  const [playing, setPlaying] = useState(false)
+  const [position, setPosition] = useState(0)
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!playing) return
     const interval = window.setInterval(() => {
       setPosition((current) => {
@@ -37,7 +37,7 @@ export function AudioPlayer({
     return () => window.clearInterval(interval)
   }, [playing])
 
-  const bars = React.useMemo(
+  const bars = useMemo(
     () => Array.from({ length: 40 }, (_, i) => 0.3 + ((i * 37) % 70) / 100),
     [],
   )

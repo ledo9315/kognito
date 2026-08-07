@@ -1,7 +1,7 @@
 'use client'
 
-import * as React from 'react'
 import Link from 'next/link'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { LayoutGrid, List, Plus, Search } from 'lucide-react'
 import { useNotebookStore } from '@/components/notebook-store'
@@ -25,8 +25,8 @@ import { NewNotebookDialog } from '@/components/new-notebook-dialog'
 export function NotebookGrid() {
   const { notebooks } = useNotebookStore()
   const router = useRouter()
-  const [query, setQuery] = React.useState('')
-  const [view, setView] = React.useState<'grid' | 'list'>('grid')
+  const [query, setQuery] = useState('')
+  const [view, setView] = useState<'grid' | 'list'>('grid')
 
   const filtered = notebooks.filter((nb) =>
     nb.title.toLowerCase().includes(query.trim().toLowerCase()),

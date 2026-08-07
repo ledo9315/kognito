@@ -1,6 +1,5 @@
 'use client'
 
-import * as React from 'react'
 import { MoreHorizontal, Plus, Trash2, FileSearch } from 'lucide-react'
 import { useNotebookStore } from '@/components/notebook-store'
 import { SourceIcon, sourceKindLabel } from '@/components/source-icon'

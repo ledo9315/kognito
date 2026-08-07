@@ -1,6 +1,6 @@
 'use client'
 
-import * as React from 'react'
+import { useState } from 'react'
 import { ArrowUp, Copy, NotebookPen, RotateCcw, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { useNotebookStore } from '@/components/notebook-store'
@@ -35,7 +35,7 @@ import { suggestedQuestions, type Notebook } from '@/lib/data'
 export function ChatPanel({ notebook }: { notebook: Notebook }) {
   const { askQuestion, clearChat, openSource, state, addNote } =
     useNotebookStore()
-  const [draft, setDraft] = React.useState('')
+  const [draft, setDraft] = useState('')
 
   const selectedCount = notebook.sources.filter((s) => s.selected).length
   const isEmpty = notebook.messages.length === 0

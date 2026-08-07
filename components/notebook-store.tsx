@@ -1,6 +1,6 @@
 'use client'
 
-import * as React from 'react'
+import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react'
 import {
   notebooks as seedNotebooks,
   simulateAnswer,
@@ -118,7 +118,7 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-export function uid(prefix: string) {
+function uid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`
 }
 
@@ -146,20 +146,20 @@ type StoreValue = {
   addNote: (notebookId: string, title: string, body: string) => void
 }
 
-const StoreContext = React.createContext<StoreValue | null>(null)
+const StoreContext = createContext<StoreValue | null>(null)
 
 export function NotebookStoreProvider({
   children,
 }: {
-  children: React.ReactNode
+  children: ReactNode
 }) {
-  const [state, dispatch] = React.useReducer(reducer, {
+  const [state, dispatch] = useReducer(reducer, {
     notebooks: seedNotebooks,
     openSourceId: null,
     thinking: false,
   })
 
-  const value = React.useMemo<StoreValue>(() => {
+  const value = useMemo<StoreValue>(() => {
     return {
       state,
       notebooks: state.notebooks,
@@ -263,7 +263,7 @@ export function NotebookStoreProvider({
 }
 
 export function useNotebookStore() {
-  const context = React.useContext(StoreContext)
+  const context = useContext(StoreContext)
   if (!context) {
     throw new Error('useNotebookStore must be used within NotebookStoreProvider')
   }
