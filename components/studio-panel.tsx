@@ -81,8 +81,8 @@ export function StudioPanel({ notebook }: { notebook: Notebook }) {
   const { generateArtifact, removeArtifact } = useNotebookStore()
   const [pending, setPending] = useState<StudioArtifactKind | null>(null)
 
-  const selectedCount = notebook.sources.filter((s) => s.selected).length
-  const audioArtifact = notebook.artifacts.find((a) => a.kind === 'audio')
+  const selectedCount = notebook.sources.filter((source) => source.selected).length
+  const audioArtifact = notebook.artifacts.find((artifact) => artifact.kind === 'audio')
 
   async function generate(kind: StudioArtifactKind) {
     if (selectedCount === 0) {

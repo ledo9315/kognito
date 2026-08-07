@@ -28,8 +28,8 @@ export function NotebookGrid() {
   const [query, setQuery] = useState('')
   const [view, setView] = useState<'grid' | 'list'>('grid')
 
-  const filtered = notebooks.filter((nb) =>
-    nb.title.toLowerCase().includes(query.trim().toLowerCase()),
+  const filteredNotebooks = notebooks.filter((notebook) =>
+    notebook.title.toLowerCase().includes(query.trim().toLowerCase()),
   )
 
   return (
@@ -75,7 +75,7 @@ export function NotebookGrid() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {filteredNotebooks.length === 0 ? (
         <Empty className="border border-dashed">
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -111,25 +111,25 @@ export function NotebookGrid() {
             }
           />
 
-          {filtered.map((nb) => (
+          {filteredNotebooks.map((notebook) => (
             <Link
-              key={nb.id}
-              href={`/notebook/${nb.id}`}
+              key={notebook.id}
+              href={`/notebook/${notebook.id}`}
               className="group flex min-h-40 flex-col justify-between rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/30 hover:shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)] focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none"
             >
               <span aria-hidden="true" className="text-2xl leading-none">
-                {nb.emoji}
+                {notebook.emoji}
               </span>
               <span className="flex flex-col gap-2">
                 <span className="text-[15px] leading-snug font-medium text-pretty text-card-foreground">
-                  {nb.title}
+                  {notebook.title}
                 </span>
                 <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span>{nb.updatedLabel}</span>
+                  <span>{notebook.updatedLabel}</span>
                   <span aria-hidden="true">·</span>
                   <span>
-                    {nb.sources.length}{' '}
-                    {nb.sources.length === 1 ? 'Quelle' : 'Quellen'}
+                    {notebook.sources.length}{' '}
+                    {notebook.sources.length === 1 ? 'Quelle' : 'Quellen'}
                   </span>
                 </span>
               </span>
@@ -138,24 +138,24 @@ export function NotebookGrid() {
         </div>
       ) : (
         <div className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-          {filtered.map((nb) => (
+          {filteredNotebooks.map((notebook) => (
             <Link
-              key={nb.id}
-              href={`/notebook/${nb.id}`}
+              key={notebook.id}
+              href={`/notebook/${notebook.id}`}
               className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/50 focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none"
             >
               <span aria-hidden="true" className="text-lg leading-none">
-                {nb.emoji}
+                {notebook.emoji}
               </span>
               <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                {nb.title}
+                {notebook.title}
               </span>
               <span className="hidden text-xs text-muted-foreground sm:block">
-                {nb.sources.length}{' '}
-                {nb.sources.length === 1 ? 'Quelle' : 'Quellen'}
+                {notebook.sources.length}{' '}
+                {notebook.sources.length === 1 ? 'Quelle' : 'Quellen'}
               </span>
               <span className="w-24 shrink-0 text-right text-xs text-muted-foreground">
-                {nb.updatedLabel}
+                {notebook.updatedLabel}
               </span>
             </Link>
           ))}

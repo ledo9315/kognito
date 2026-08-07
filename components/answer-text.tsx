@@ -90,7 +90,7 @@ function Inline({
         const citationMatch = token.match(/^\[(\d+)\]$/)
         if (citationMatch) {
           const number = Number(citationMatch[1])
-          const citation = citations.find((c) => c.index === number)
+          const citation = citations.find((candidate) => candidate.index === number)
           if (!citation) return <span key={index}>{token}</span>
           return (
             <CitationChip
