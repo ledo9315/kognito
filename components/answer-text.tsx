@@ -1,0 +1,136 @@
+'use client'
+
+import * as React from 'react'
+import type { Citation } from '@/lib/data'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+
+type Props = {
+  content: string
+  citations?: Citation[]
+  onCitationClick?: (citation: Citation) => void
+}
+
+export function AnswerText({ content, citations = [], onCitationClick }: Props) {
+  const blocks = content.split('\n\n')
+
+  return (
+    <div className="flex flex-col gap-3 text-[15px] leading-relaxed">
+      {blocks.map((block, blockIndex) => {
+        const lines = block.split('\n')
+        const isList = lines.every((line) => line.trim().startsWith('- '))
+
+        if (isList) {
+          return (
+            <ul key={blockIndex} className="flex list-none flex-col gap-1.5 pl-1">
+              {lines.map((line, lineIndex) => (
+                <li key={lineIndex} className="flex gap-2.5">
+                  <span
+                    aria-hidden="true"
+                    className="mt-[0.6em] size-1 shrink-0 rounded-full bg-muted-foreground/60"
+                  />
+                  <span>
+                    <Inline
+                      text={line.trim().slice(2)}
+                      citations={citations}
+                      onCitationClick={onCitationClick}
+                    />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+
+        return (
+          <p key={blockIndex} className="text-pretty">
+            {lines.map((line, lineIndex) => (
+              <React.Fragment key={lineIndex}>
+                {lineIndex > 0 && <br />}
+                <Inline
+                  text={line}
+                  citations={citations}
+                  onCitationClick={onCitationClick}
+                />
+              </React.Fragment>
+            ))}
+          </p>
+        )
+      })}
+    </div>
+  )
+}
+
+function Inline({
+  text,
+  citations,
+  onCitationClick,
+}: {
+  text: string
+  citations: Citation[]
+  onCitationClick?: (citation: Citation) => void
+}) {
+  // Split at **bold** and [n]
+  const tokens = text.split(/(\*\*[^*]+\*\*|\[\d+\])/g).filter(Boolean)
+
+  return (
+    <>
+      {tokens.map((token, index) => {
+        if (token.startsWith('**') && token.endsWith('**')) {
+          return (
+            <strong key={index} className="font-medium text-foreground">
+              {token.slice(2, -2)}
+            </strong>
+          )
+        }
+
+        const citationMatch = token.match(/^\[(\d+)\]$/)
+        if (citationMatch) {
+          const number = Number(citationMatch[1])
+          const citation = citations.find((c) => c.index === number)
+          if (!citation) return <span key={index}>{token}</span>
+          return (
+            <CitationChip
+              key={index}
+              citation={citation}
+              onClick={onCitationClick}
+            />
+          )
+        }
+
+        return <span key={index}>{token}</span>
+      })}
+    </>
+  )
+}
+
+function CitationChip({
+  citation,
+  onClick,
+}: {
+  citation: Citation
+  onClick?: (citation: Citation) => void
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            onClick={() => onClick?.(citation)}
+            aria-label={`Beleg ${citation.index} anzeigen`}
+            className="mx-0.5 inline-flex size-[1.15rem] -translate-y-px items-center justify-center rounded-full bg-accent align-middle font-mono text-[10px] font-medium text-accent-foreground transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none"
+          >
+            {citation.index}
+          </button>
+        }
+      />
+      <TooltipContent className="max-w-72 text-left">
+        <span className="line-clamp-4">{citation.quote}</span>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
