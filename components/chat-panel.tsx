@@ -1,6 +1,6 @@
 'use client'
 
-import * as React from 'react'
+import { useState } from 'react'
 import { ArrowUp, Copy, NotebookPen, RotateCcw, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { useNotebookStore } from '@/components/notebook-store'
@@ -35,9 +35,9 @@ import { suggestedQuestions, type Notebook } from '@/lib/data'
 export function ChatPanel({ notebook }: { notebook: Notebook }) {
   const { askQuestion, clearChat, openSource, state, addNote } =
     useNotebookStore()
-  const [draft, setDraft] = React.useState('')
+  const [draft, setDraft] = useState('')
 
-  const selectedCount = notebook.sources.filter((s) => s.selected).length
+  const selectedCount = notebook.sources.filter((source) => source.selected).length
   const isEmpty = notebook.messages.length === 0
 
   async function send(question: string) {
@@ -184,11 +184,11 @@ export function ChatPanel({ notebook }: { notebook: Notebook }) {
                               aria-hidden="true"
                               className="flex items-end gap-0.5"
                             >
-                              {[0, 1, 2, 3].map((i) => (
+                              {[0, 1, 2, 3].map((index) => (
                                 <span
-                                  key={i}
+                                  key={index}
                                   className="animate-wave h-3 w-0.5 origin-bottom rounded-full bg-primary/60"
-                                  style={{ animationDelay: `${i * 0.13}s` }}
+                                  style={{ animationDelay: `${index * 0.13}s` }}
                                 />
                               ))}
                             </span>

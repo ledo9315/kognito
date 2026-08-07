@@ -1,6 +1,5 @@
 'use client'
 
-import * as React from 'react'
 import { MoreHorizontal, Plus, Trash2, FileSearch } from 'lucide-react'
 import { useNotebookStore } from '@/components/notebook-store'
 import { SourceIcon, sourceKindLabel } from '@/components/source-icon'
@@ -28,7 +27,7 @@ export function SourcesPanel({ notebook }: { notebook: Notebook }) {
   const { toggleSource, setAllSources, removeSource, openSource, state } =
     useNotebookStore()
 
-  const selectedCount = notebook.sources.filter((s) => s.selected).length
+  const selectedCount = notebook.sources.filter((source) => source.selected).length
   const allSelected =
     notebook.sources.length > 0 && selectedCount === notebook.sources.length
 

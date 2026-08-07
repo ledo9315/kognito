@@ -1,6 +1,6 @@
 'use client'
 
-import * as React from 'react'
+import { Fragment } from 'react'
 import type { Citation } from '@/lib/data'
 import {
   Tooltip,
@@ -48,14 +48,14 @@ export function AnswerText({ content, citations = [], onCitationClick }: Props) 
         return (
           <p key={blockIndex} className="text-pretty">
             {lines.map((line, lineIndex) => (
-              <React.Fragment key={lineIndex}>
+              <Fragment key={lineIndex}>
                 {lineIndex > 0 && <br />}
                 <Inline
                   text={line}
                   citations={citations}
                   onCitationClick={onCitationClick}
                 />
-              </React.Fragment>
+              </Fragment>
             ))}
           </p>
         )
@@ -90,7 +90,7 @@ function Inline({
         const citationMatch = token.match(/^\[(\d+)\]$/)
         if (citationMatch) {
           const number = Number(citationMatch[1])
-          const citation = citations.find((c) => c.index === number)
+          const citation = citations.find((candidate) => candidate.index === number)
           if (!citation) return <span key={index}>{token}</span>
           return (
             <CitationChip

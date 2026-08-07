@@ -10,7 +10,9 @@ import type { Notebook } from '@/lib/data'
 
 export function SourceReader({ notebook }: { notebook: Notebook }) {
   const { state, openSource } = useNotebookStore()
-  const source = notebook.sources.find((s) => s.id === state.openSourceId)
+  const source = notebook.sources.find(
+    (candidate) => candidate.id === state.openSourceId,
+  )
 
   if (!source) return null
 

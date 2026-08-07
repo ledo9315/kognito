@@ -1,6 +1,6 @@
 'use client'
 
-import * as React from 'react'
+import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react'
 import {
   notebooks as seedNotebooks,
   simulateAnswer,
@@ -37,72 +37,83 @@ type Action =
 function mapNotebook(
   state: State,
   notebookId: string,
-  fn: (nb: Notebook) => Notebook,
+  updateNotebook: (notebook: Notebook) => Notebook,
 ): State {
   return {
     ...state,
-    notebooks: state.notebooks.map((nb) => (nb.id === notebookId ? fn(nb) : nb)),
+    notebooks: state.notebooks.map((notebook) =>
+      notebook.id === notebookId ? updateNotebook(notebook) : notebook,
+    ),
   }
 }
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'toggle-source':
-      return mapNotebook(state, action.notebookId, (nb) => ({
-        ...nb,
-        sources: nb.sources.map((s) =>
-          s.id === action.sourceId ? { ...s, selected: !s.selected } : s,
+      return mapNotebook(state, action.notebookId, (notebook) => ({
+        ...notebook,
+        sources: notebook.sources.map((source) =>
+          source.id === action.sourceId
+            ? { ...source, selected: !source.selected }
+            : source,
         ),
       }))
     case 'set-all-sources':
-      return mapNotebook(state, action.notebookId, (nb) => ({
-        ...nb,
-        sources: nb.sources.map((s) => ({ ...s, selected: action.selected })),
+      return mapNotebook(state, action.notebookId, (notebook) => ({
+        ...notebook,
+        sources: notebook.sources.map((source) => ({
+          ...source,
+          selected: action.selected,
+        })),
       }))
     case 'add-source':
-      return mapNotebook(state, action.notebookId, (nb) => ({
-        ...nb,
-        sources: [action.source, ...nb.sources],
+      return mapNotebook(state, action.notebookId, (notebook) => ({
+        ...notebook,
+        sources: [action.source, ...notebook.sources],
       }))
     case 'remove-source':
-      return mapNotebook(state, action.notebookId, (nb) => ({
-        ...nb,
-        sources: nb.sources.filter((s) => s.id !== action.sourceId),
+      return mapNotebook(state, action.notebookId, (notebook) => ({
+        ...notebook,
+        sources: notebook.sources.filter(
+          (source) => source.id !== action.sourceId,
+        ),
       }))
     case 'open-source':
       return { ...state, openSourceId: action.sourceId }
     case 'add-message':
-      return mapNotebook(state, action.notebookId, (nb) => ({
-        ...nb,
-        messages: [...nb.messages, action.message],
+      return mapNotebook(state, action.notebookId, (notebook) => ({
+        ...notebook,
+        messages: [...notebook.messages, action.message],
       }))
     case 'clear-messages':
-      return mapNotebook(state, action.notebookId, (nb) => ({
-        ...nb,
+      return mapNotebook(state, action.notebookId, (notebook) => ({
+        ...notebook,
         messages: [],
       }))
     case 'set-thinking':
       return { ...state, thinking: action.value }
     case 'add-artifact':
-      return mapNotebook(state, action.notebookId, (nb) => ({
-        ...nb,
-        artifacts: [action.artifact, ...nb.artifacts],
+      return mapNotebook(state, action.notebookId, (notebook) => ({
+        ...notebook,
+        artifacts: [action.artifact, ...notebook.artifacts],
       }))
     case 'remove-artifact':
-      return mapNotebook(state, action.notebookId, (nb) => ({
-        ...nb,
-        artifacts: nb.artifacts.filter((a) => a.id !== action.artifactId),
+      return mapNotebook(state, action.notebookId, (notebook) => ({
+        ...notebook,
+        artifacts: notebook.artifacts.filter(
+          (artifact) => artifact.id !== action.artifactId,
+        ),
       }))
     case 'add-notebook':
       return { ...state, notebooks: [action.notebook, ...state.notebooks] }
     case 'rename-notebook':
-      return mapNotebook(state, action.notebookId, (nb) => ({
-        ...nb,
+      return mapNotebook(state, action.notebookId, (notebook) => ({
+        ...notebook,
         title: action.title,
       }))
     case 'add-note':
-      return mapNotebook(state, action.notebookId, (nb) => ({
-        ...nb,
+      return mapNotebook(state, action.notebookId, (notebook) => ({
+        ...notebook,
         notes: [
           {
             id: uid('note'),
@@ -110,7 +121,7 @@ function reducer(state: State, action: Action): State {
             body: action.body,
             pinned: false,
           },
-          ...nb.notes,
+          ...notebook.notes,
         ],
       }))
     default:
@@ -118,7 +129,7 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-export function uid(prefix: string) {
+function uid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`
 }
 
@@ -146,24 +157,25 @@ type StoreValue = {
   addNote: (notebookId: string, title: string, body: string) => void
 }
 
-const StoreContext = React.createContext<StoreValue | null>(null)
+const StoreContext = createContext<StoreValue | null>(null)
 
 export function NotebookStoreProvider({
   children,
 }: {
-  children: React.ReactNode
+  children: ReactNode
 }) {
-  const [state, dispatch] = React.useReducer(reducer, {
+  const [state, dispatch] = useReducer(reducer, {
     notebooks: seedNotebooks,
     openSourceId: null,
     thinking: false,
   })
 
-  const value = React.useMemo<StoreValue>(() => {
+  const value = useMemo<StoreValue>(() => {
     return {
       state,
       notebooks: state.notebooks,
-      getNotebook: (id) => state.notebooks.find((nb) => nb.id === id),
+      getNotebook: (notebookId) =>
+        state.notebooks.find((notebook) => notebook.id === notebookId),
       toggleSource: (notebookId, sourceId) =>
         dispatch({ type: 'toggle-source', notebookId, sourceId }),
       setAllSources: (notebookId, selected) =>
@@ -173,7 +185,7 @@ export function NotebookStoreProvider({
           type: 'add-source',
           notebookId,
           source: {
-            id: uid('src'),
+            id: uid('source'),
             title: input.title,
             kind: input.kind,
             meta: input.meta,
@@ -190,14 +202,16 @@ export function NotebookStoreProvider({
       openSource: (sourceId) => dispatch({ type: 'open-source', sourceId }),
       clearChat: (notebookId) => dispatch({ type: 'clear-messages', notebookId }),
       askQuestion: async (notebookId, question) => {
-        const notebook = state.notebooks.find((nb) => nb.id === notebookId)
+        const notebook = state.notebooks.find(
+          (candidate) => candidate.id === notebookId,
+        )
         if (!notebook) return
 
         dispatch({
           type: 'add-message',
           notebookId,
           message: {
-            id: uid('msg'),
+            id: uid('message'),
             role: 'user',
             content: question,
             createdAt: Date.now(),
@@ -212,7 +226,7 @@ export function NotebookStoreProvider({
           type: 'add-message',
           notebookId,
           message: {
-            id: uid('msg'),
+            id: uid('message'),
             role: 'assistant',
             content,
             citations,
@@ -224,7 +238,7 @@ export function NotebookStoreProvider({
       generateArtifact: async (notebookId, kind) => {
         await new Promise((resolve) => setTimeout(resolve, 1600))
         const artifact: StudioArtifact = {
-          id: uid('art'),
+          id: uid('artifact'),
           kind,
           title: artifactTitle(kind),
           meta: artifactMeta(kind),
@@ -236,7 +250,7 @@ export function NotebookStoreProvider({
       removeArtifact: (notebookId, artifactId) =>
         dispatch({ type: 'remove-artifact', notebookId, artifactId }),
       createNotebook: (title) => {
-        const id = uid('nb')
+        const id = uid('notebook')
         dispatch({
           type: 'add-notebook',
           notebook: {
@@ -263,7 +277,7 @@ export function NotebookStoreProvider({
 }
 
 export function useNotebookStore() {
-  const context = React.useContext(StoreContext)
+  const context = useContext(StoreContext)
   if (!context) {
     throw new Error('useNotebookStore must be used within NotebookStoreProvider')
   }

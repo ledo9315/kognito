@@ -56,7 +56,7 @@ export type Notebook = {
 
 const climateSources: Source[] = [
   {
-    id: 's1',
+    id: 'climate-source-1',
     title: 'IPCC AR6: Synthesebericht (Kapitel 3)',
     kind: 'pdf',
     meta: 'PDF · 84 Seiten',
@@ -70,7 +70,7 @@ const climateSources: Source[] = [
     ],
   },
   {
-    id: 's2',
+    id: 'climate-source-2',
     title: 'Netto-Null Industrie: Kostenkurven 2024',
     kind: 'doc',
     meta: 'DOCX · 22 Seiten',
@@ -83,7 +83,7 @@ const climateSources: Source[] = [
     ],
   },
   {
-    id: 's3',
+    id: 'climate-source-3',
     title: 'Interview: Energiewende in der Praxis',
     kind: 'youtube',
     meta: 'YouTube · 41 Min.',
@@ -96,7 +96,7 @@ const climateSources: Source[] = [
     ],
   },
   {
-    id: 's4',
+    id: 'climate-source-4',
     title: 'bmwk.de: Monitoringbericht Energiewende',
     kind: 'web',
     meta: 'Website · bmwk.de',
@@ -108,7 +108,7 @@ const climateSources: Source[] = [
     ],
   },
   {
-    id: 's5',
+    id: 'climate-source-5',
     title: 'Eigene Notizen: Recherchefragen',
     kind: 'text',
     meta: 'Text · 1.200 Wörter',
@@ -123,14 +123,14 @@ const climateSources: Source[] = [
 
 const climateMessages: ChatMessage[] = [
   {
-    id: 'm1',
+    id: 'climate-message-1',
     role: 'user',
     content:
       'Was sind die wichtigsten Hebel, um die Industrie bis 2045 klimaneutral zu machen?',
     createdAt: Date.now() - 1000 * 60 * 22,
   },
   {
-    id: 'm2',
+    id: 'climate-message-2',
     role: 'assistant',
     content: `Aus deinen Quellen lassen sich drei zentrale Hebel ableiten:
 
@@ -143,19 +143,19 @@ const climateMessages: ChatMessage[] = [
 Zeitkritisch ist das alles, weil das verbleibende CO2-Budget für 1,5 °C bei rund 500 Gt CO2 ab 2020 liegt [1].`,
     citations: [
       {
-        sourceId: 's1',
+        sourceId: 'climate-source-1',
         index: 1,
         quote:
           'Der CO2-Restbudget-Pfad für 1,5 °C beträgt rund 500 Gt CO2 ab 2020.',
       },
       {
-        sourceId: 's2',
+        sourceId: 'climate-source-2',
         index: 2,
         quote:
           'Grüner Stahl erreicht bei Strompreisen unter 45 €/MWh Kostenparität mit Hochofenroute.',
       },
       {
-        sourceId: 's3',
+        sourceId: 'climate-source-3',
         index: 3,
         quote:
           'Genehmigungsverfahren für Umspannwerke dauern im Schnitt noch vier bis sechs Jahre.',
@@ -167,7 +167,7 @@ Zeitkritisch ist das alles, weil das verbleibende CO2-Budget für 1,5 °C bei ru
 
 const thesisSources: Source[] = [
   {
-    id: 't1',
+    id: 'thesis-source-1',
     title: 'Attention Is All You Need',
     kind: 'pdf',
     meta: 'PDF · 15 Seiten',
@@ -180,7 +180,7 @@ const thesisSources: Source[] = [
     ],
   },
   {
-    id: 't2',
+    id: 'thesis-source-2',
     title: 'Retrieval-Augmented Generation: Survey',
     kind: 'pdf',
     meta: 'PDF · 38 Seiten',
@@ -193,7 +193,7 @@ const thesisSources: Source[] = [
     ],
   },
   {
-    id: 't3',
+    id: 'thesis-source-3',
     title: 'Vorlesungsmitschnitt: Evaluation von LLMs',
     kind: 'audio',
     meta: 'MP3 · 68 Min.',
@@ -208,7 +208,7 @@ const thesisSources: Source[] = [
 
 const marketSources: Source[] = [
   {
-    id: 'w1',
+    id: 'market-source-1',
     title: 'Wettbewerbsanalyse Q3: Rohdaten',
     kind: 'doc',
     meta: 'XLSX-Export · 9 Seiten',
@@ -220,7 +220,7 @@ const marketSources: Source[] = [
     ],
   },
   {
-    id: 'w2',
+    id: 'market-source-2',
     title: 'Kundeninterviews: Transkripte (12 Gespräche)',
     kind: 'text',
     meta: 'Text · 24.000 Wörter',
@@ -235,7 +235,7 @@ const marketSources: Source[] = [
 
 export const notebooks: Notebook[] = [
   {
-    id: 'nb-klima',
+    id: 'notebook-climate',
     title: 'Klimaneutrale Industrie 2045',
     emoji: '🌍',
     updatedLabel: 'Heute',
@@ -243,14 +243,14 @@ export const notebooks: Notebook[] = [
     messages: climateMessages,
     artifacts: [
       {
-        id: 'a1',
+        id: 'artifact-1',
         kind: 'audio',
         title: 'Audio-Übersicht: Transformationspfade',
         meta: '12:04 · Zwei Sprecher',
         createdAt: Date.now() - 1000 * 60 * 60 * 3,
       },
       {
-        id: 'a2',
+        id: 'artifact-2',
         kind: 'briefing',
         title: 'Briefing-Dokument',
         meta: '6 Abschnitte',
@@ -259,7 +259,7 @@ export const notebooks: Notebook[] = [
     ],
     notes: [
       {
-        id: 'n1',
+        id: 'note-1',
         title: 'Kernthese',
         body: 'Der limitierende Faktor ist nicht Technologie, sondern Genehmigungsgeschwindigkeit und Strompreis.',
         pinned: true,
@@ -267,7 +267,7 @@ export const notebooks: Notebook[] = [
     ],
   },
   {
-    id: 'nb-thesis',
+    id: 'notebook-thesis',
     title: 'Masterarbeit: RAG-Systeme',
     emoji: '📚',
     updatedLabel: 'Gestern',
@@ -275,7 +275,7 @@ export const notebooks: Notebook[] = [
     messages: [],
     artifacts: [
       {
-        id: 'a3',
+        id: 'artifact-3',
         kind: 'flashcards',
         title: 'Lernkarten: Attention & RAG',
         meta: '24 Karten',
@@ -285,7 +285,7 @@ export const notebooks: Notebook[] = [
     notes: [],
   },
   {
-    id: 'nb-market',
+    id: 'notebook-market',
     title: 'Marktanalyse DACH',
     emoji: '📈',
     updatedLabel: 'Vor 4 Tagen',
@@ -348,8 +348,8 @@ export function simulateAnswer(
   question: string,
   sources: Source[],
 ): { content: string; citations: Citation[] } {
-  const active = sources.filter((s) => s.selected)
-  if (active.length === 0) {
+  const activeSources = sources.filter((source) => source.selected)
+  if (activeSources.length === 0) {
     return {
       content:
         'Es ist derzeit keine Quelle ausgewählt. Wähle links mindestens eine Quelle aus, damit ich meine Antwort darauf belegen kann.',
@@ -363,8 +363,8 @@ export function simulateAnswer(
     ]
 
   const citations: Citation[] = []
-  for (let i = 0; i < Math.min(pick.citationCount, active.length); i++) {
-    const source = active[i]
+  for (let i = 0; i < Math.min(pick.citationCount, activeSources.length); i++) {
+    const source = activeSources[i]
     citations.push({
       sourceId: source.id,
       index: i + 1,
