@@ -24,3 +24,7 @@ playwright-report/
 AGENTS.md
 CLAUDE.md
 .claude/
+
+# Agent skill files pulled in by tooling
+.agents/
+skills-lock.json
