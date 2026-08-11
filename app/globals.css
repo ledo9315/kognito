@@ -1,10 +1,5 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
-/* ponytail: relativer Pfad statt 'shadcn/tailwind.css'. Der Tailwind-PostCSS-Plugin
-   loest den Paketnamen aus seinem eigenen pnpm-Store-Verzeichnis auf, in dem
-   shadcn kein Nachbar ist. Im Dev-Server faellt das nicht auf, der Produktions-
-   Build bricht ab. Zurueck auf den Paketnamen, sobald Tailwind oder pnpm das
-   aufloest. */
 @import '../node_modules/shadcn/dist/tailwind.css';
 
 @custom-variant dark (&:is(.dark *));

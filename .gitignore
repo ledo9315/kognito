@@ -9,6 +9,11 @@ tsconfig.tsbuildinfo
 .env
 .env*.local
 
+# Tests
+test-results/
+playwright-report/
+.playwright/
+
 # Deployment
 .vercel/
 

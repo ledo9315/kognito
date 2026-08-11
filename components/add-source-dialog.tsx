@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { SourceKind } from '@/lib/data'
+import { isYoutubeUrl, sourceHostLabel } from '@/lib/source-url'
 import { cn } from '@/lib/utils'
 
 const uploadKinds: SourceKind[] = ['pdf', 'doc', 'audio']
@@ -117,8 +118,8 @@ export function AddSourceDialog({
               onSubmit={(event) => {
                 event.preventDefault()
                 if (!url.trim()) return
-                const isVideo = /youtu\.?be/.test(url)
-                const host = safeHost(url)
+                const isVideo = isYoutubeUrl(url)
+                const host = sourceHostLabel(url)
                 commit(
                   isVideo ? `YouTube-Video · ${host}` : host,
                   isVideo ? 'youtube' : 'web',
@@ -188,12 +189,4 @@ export function AddSourceDialog({
       </DialogContent>
     </Dialog>
   )
-}
-
-function safeHost(value: string) {
-  try {
-    return new URL(value).hostname.replace(/^www\./, '')
-  } catch {
-    return value.slice(0, 40)
-  }
 }
