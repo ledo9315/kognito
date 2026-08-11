@@ -1,6 +1,8 @@
 allowBuilds:
   # Native resolver used by ESLint, needs its build step to run.
   unrs-resolver: true
+  # Bundler behind drizzle-kit, ships a platform binary.
+  esbuild: true
   # Only pulled in by the shadcn CLI, not needed at runtime. Without an entry
   # here pnpm exits non-zero, which makes next build fail before it compiles.
   msw: false
