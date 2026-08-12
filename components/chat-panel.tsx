@@ -44,7 +44,7 @@ export function ChatPanel({ notebook }: { notebook: Notebook }) {
     const value = question.trim()
     if (!value || state.thinking) return
     setDraft('')
-    await askQuestion(notebook.id, value)
+    await askQuestion(value)
   }
 
   return (
@@ -60,7 +60,7 @@ export function ChatPanel({ notebook }: { notebook: Notebook }) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => clearChat(notebook.id)}
+            onClick={() => clearChat()}
           >
             <RotateCcw data-icon="inline-start" />
             Neu starten
@@ -158,7 +158,6 @@ export function ChatPanel({ notebook }: { notebook: Notebook }) {
                                 size="sm"
                                 onClick={() => {
                                   addNote(
-                                    notebook.id,
                                     'Aus dem Chat gespeichert',
                                     message.content,
                                   )

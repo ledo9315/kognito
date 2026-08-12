@@ -92,7 +92,7 @@ export function StudioPanel({ notebook }: { notebook: Notebook }) {
       return
     }
     setPending(kind)
-    const artifact = await generateArtifact(notebook.id, kind)
+    const artifact = await generateArtifact(kind)
     setPending(null)
     toast.success(`${artifact.title} erstellt`, { description: artifact.meta })
   }
@@ -175,7 +175,7 @@ export function StudioPanel({ notebook }: { notebook: Notebook }) {
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        onClick={() => removeArtifact(notebook.id, artifact.id)}
+                        onClick={() => removeArtifact(artifact.id)}
                         aria-label={`${artifact.title} löschen`}
                       >
                         <Trash2 />

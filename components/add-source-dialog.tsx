@@ -25,13 +25,7 @@ import { cn } from '@/lib/utils'
 
 const uploadKinds: SourceKind[] = ['pdf', 'doc', 'audio']
 
-export function AddSourceDialog({
-  notebookId,
-  trigger,
-}: {
-  notebookId: string
-  trigger: ReactElement
-}) {
+export function AddSourceDialog({ trigger }: { trigger: ReactElement }) {
   const { addSource } = useNotebookStore()
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState('upload')
@@ -39,7 +33,7 @@ export function AddSourceDialog({
   const [pasted, setPasted] = useState('')
 
   function commit(title: string, kind: SourceKind, meta: string) {
-    addSource(notebookId, { title, kind, meta })
+    addSource({ title, kind, meta })
     setOpen(false)
     setUrl('')
     setPasted('')

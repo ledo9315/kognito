@@ -20,13 +20,14 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'], storageState: '.playwright/user.json' },
       dependencies: ['setup'],
-      testIgnore: /auth\.setup\.ts|anonymous\.spec\.ts/,
+      testIgnore: /auth\.setup\.ts|[/\\]anonymous[/\\]/,
     },
     {
-      // Runs without the stored session, for everything about being signed out.
+      // Everything about being signed out, or about signing in as somebody
+      // else, runs here: no stored session.
       name: 'anonymous',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: /anonymous\.spec\.ts/,
+      testMatch: /[/\\]anonymous[/\\]/,
     },
   ],
   webServer: {

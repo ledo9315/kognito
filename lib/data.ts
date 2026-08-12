@@ -1,3 +1,12 @@
+/**
+ * What is left of the prototype: the shapes the panels render and a simulated
+ * answer, so the workspace can be clicked through before the real pipeline
+ * exists. The notebooks themselves come from the database now.
+ *
+ * Issues 7 to 12 replace this file piece by piece. Nothing new should be
+ * built on it.
+ */
+
 export type SourceKind = 'pdf' | 'doc' | 'web' | 'youtube' | 'text' | 'audio'
 
 export type Source = {
@@ -41,260 +50,16 @@ export type StudioArtifact = {
   createdAt: number
 }
 
+/** One open notebook, as the panels see it. */
 export type Notebook = {
   id: string
   title: string
   emoji: string
-  updatedLabel: string
   sources: Source[]
   messages: ChatMessage[]
   artifacts: StudioArtifact[]
   notes: { id: string; title: string; body: string; pinned: boolean }[]
 }
-
-/* -------------------------------------------------------------------------- */
-
-const climateSources: Source[] = [
-  {
-    id: 'climate-source-1',
-    title: 'IPCC AR6: Synthesebericht (Kapitel 3)',
-    kind: 'pdf',
-    meta: 'PDF · 84 Seiten',
-    selected: true,
-    summary:
-      'Fasst den Stand der Klimaforschung zusammen: Erwärmungspfade, Kipppunkte und Minderungsoptionen bis 2050.',
-    excerpts: [
-      'Die globale Oberflächentemperatur lag 2011–2020 um 1,09 °C über dem Niveau von 1850–1900.',
-      'Ohne sofortige Emissionsminderung ist eine Begrenzung auf 1,5 °C nicht mehr erreichbar.',
-      'Der CO2-Restbudget-Pfad für 1,5 °C beträgt rund 500 Gt CO2 ab 2020.',
-    ],
-  },
-  {
-    id: 'climate-source-2',
-    title: 'Netto-Null Industrie: Kostenkurven 2024',
-    kind: 'doc',
-    meta: 'DOCX · 22 Seiten',
-    selected: true,
-    summary:
-      'Analysiert Investitionskosten für Elektrifizierung, Wasserstoff und CCS in Stahl-, Zement- und Chemieindustrie.',
-    excerpts: [
-      'Grüner Stahl erreicht bei Strompreisen unter 45 €/MWh Kostenparität mit Hochofenroute.',
-      'CCS in der Zementindustrie verteuert die Tonne Zement um 55–90 €.',
-    ],
-  },
-  {
-    id: 'climate-source-3',
-    title: 'Interview: Energiewende in der Praxis',
-    kind: 'youtube',
-    meta: 'YouTube · 41 Min.',
-    selected: true,
-    summary:
-      'Gespräch mit einer Netzbetreiberin über Speicherbedarf, Netzausbau und Genehmigungsdauern in Deutschland.',
-    excerpts: [
-      'Genehmigungsverfahren für Umspannwerke dauern im Schnitt noch vier bis sechs Jahre.',
-      'Batteriespeicher übernehmen inzwischen einen wachsenden Teil der Primärregelleistung.',
-    ],
-  },
-  {
-    id: 'climate-source-4',
-    title: 'bmwk.de: Monitoringbericht Energiewende',
-    kind: 'web',
-    meta: 'Website · bmwk.de',
-    selected: false,
-    summary:
-      'Offizieller Monitoringbericht mit Kennzahlen zu Ausbaupfaden, Versorgungssicherheit und Emissionen.',
-    excerpts: [
-      'Der Anteil erneuerbarer Energien am Bruttostromverbrauch lag zuletzt bei über 55 %.',
-    ],
-  },
-  {
-    id: 'climate-source-5',
-    title: 'Eigene Notizen: Recherchefragen',
-    kind: 'text',
-    meta: 'Text · 1.200 Wörter',
-    selected: true,
-    summary:
-      'Gesammelte Leitfragen, offene Punkte und Hypothesen zur Wirtschaftlichkeit der Transformation.',
-    excerpts: [
-      'Offene Frage: Wie verteilen sich Transformationskosten zwischen Staat, Industrie und Haushalten?',
-    ],
-  },
-]
-
-const climateMessages: ChatMessage[] = [
-  {
-    id: 'climate-message-1',
-    role: 'user',
-    content:
-      'Was sind die wichtigsten Hebel, um die Industrie bis 2045 klimaneutral zu machen?',
-    createdAt: Date.now() - 1000 * 60 * 22,
-  },
-  {
-    id: 'climate-message-2',
-    role: 'assistant',
-    content: `Aus deinen Quellen lassen sich drei zentrale Hebel ableiten:
-
-**1. Elektrifizierung mit günstigem Strom.** Die Kostenparität von grünem Stahl hängt fast vollständig am Strompreis. Unterhalb von 45 €/MWh wird die Direktreduktionsroute gegenüber dem Hochofen wettbewerbsfähig [2].
-
-**2. Netzausbau und Speicher als Voraussetzung.** Der Engpass ist weniger die Technologie als die Genehmigungsdauer: Umspannwerke brauchen aktuell vier bis sechs Jahre [3]. Batteriespeicher decken bereits einen wachsenden Teil der Regelleistung ab [3].
-
-**3. CCS nur dort, wo unvermeidbar.** In der Zementindustrie bleiben Prozessemissionen bestehen; CCS verteuert die Tonne um 55–90 € [2]. Das ist teuer, aber ohne Alternative.
-
-Zeitkritisch ist das alles, weil das verbleibende CO2-Budget für 1,5 °C bei rund 500 Gt CO2 ab 2020 liegt [1].`,
-    citations: [
-      {
-        sourceId: 'climate-source-1',
-        index: 1,
-        quote:
-          'Der CO2-Restbudget-Pfad für 1,5 °C beträgt rund 500 Gt CO2 ab 2020.',
-      },
-      {
-        sourceId: 'climate-source-2',
-        index: 2,
-        quote:
-          'Grüner Stahl erreicht bei Strompreisen unter 45 €/MWh Kostenparität mit Hochofenroute.',
-      },
-      {
-        sourceId: 'climate-source-3',
-        index: 3,
-        quote:
-          'Genehmigungsverfahren für Umspannwerke dauern im Schnitt noch vier bis sechs Jahre.',
-      },
-    ],
-    createdAt: Date.now() - 1000 * 60 * 21,
-  },
-]
-
-const thesisSources: Source[] = [
-  {
-    id: 'thesis-source-1',
-    title: 'Attention Is All You Need',
-    kind: 'pdf',
-    meta: 'PDF · 15 Seiten',
-    selected: true,
-    summary:
-      'Originalarbeit zur Transformer-Architektur: Self-Attention ersetzt Rekurrenz vollständig.',
-    excerpts: [
-      'Der Transformer verzichtet vollständig auf Rekurrenz und Konvolution und nutzt ausschließlich Attention.',
-      'Multi-Head Attention erlaubt es, Informationen aus verschiedenen Repräsentationsräumen zu kombinieren.',
-    ],
-  },
-  {
-    id: 'thesis-source-2',
-    title: 'Retrieval-Augmented Generation: Survey',
-    kind: 'pdf',
-    meta: 'PDF · 38 Seiten',
-    selected: true,
-    summary:
-      'Überblick über RAG-Pipelines: Chunking, Embedding, Reranking und Groundedness-Metriken.',
-    excerpts: [
-      'Reranking mit Cross-Encodern verbessert die Antwortpräzision deutlich gegenüber reiner Vektorsuche.',
-      'Groundedness lässt sich über Zitat-Abdeckung pro Aussage messen.',
-    ],
-  },
-  {
-    id: 'thesis-source-3',
-    title: 'Vorlesungsmitschnitt: Evaluation von LLMs',
-    kind: 'audio',
-    meta: 'MP3 · 68 Min.',
-    selected: true,
-    summary:
-      'Behandelt Benchmarks, ihre Grenzen und den Unterschied zwischen Fähigkeits- und Sicherheitsevaluation.',
-    excerpts: [
-      'Benchmarks sättigen schnell; aussagekräftiger sind aufgabenspezifische Evaluationssets.',
-    ],
-  },
-]
-
-const marketSources: Source[] = [
-  {
-    id: 'market-source-1',
-    title: 'Wettbewerbsanalyse Q3: Rohdaten',
-    kind: 'doc',
-    meta: 'XLSX-Export · 9 Seiten',
-    selected: true,
-    summary:
-      'Preis-, Feature- und Positionierungsvergleich von sieben Wettbewerbern im DACH-Markt.',
-    excerpts: [
-      'Drei von sieben Anbietern haben im Quartal ein nutzungsbasiertes Preismodell eingeführt.',
-    ],
-  },
-  {
-    id: 'market-source-2',
-    title: 'Kundeninterviews: Transkripte (12 Gespräche)',
-    kind: 'text',
-    meta: 'Text · 24.000 Wörter',
-    selected: true,
-    summary:
-      'Wiederkehrende Themen: Onboarding-Aufwand, Datenhoheit und fehlende Integrationen.',
-    excerpts: [
-      'Neun von zwölf Befragten nennen Datenhoheit als K.-o.-Kriterium bei der Anbieterwahl.',
-    ],
-  },
-]
-
-export const notebooks: Notebook[] = [
-  {
-    id: 'notebook-climate',
-    title: 'Klimaneutrale Industrie 2045',
-    emoji: '🌍',
-    updatedLabel: 'Heute',
-    sources: climateSources,
-    messages: climateMessages,
-    artifacts: [
-      {
-        id: 'artifact-1',
-        kind: 'audio',
-        title: 'Audio-Übersicht: Transformationspfade',
-        meta: '12:04 · Zwei Sprecher',
-        createdAt: Date.now() - 1000 * 60 * 60 * 3,
-      },
-      {
-        id: 'artifact-2',
-        kind: 'briefing',
-        title: 'Briefing-Dokument',
-        meta: '6 Abschnitte',
-        createdAt: Date.now() - 1000 * 60 * 60 * 5,
-      },
-    ],
-    notes: [
-      {
-        id: 'note-1',
-        title: 'Kernthese',
-        body: 'Der limitierende Faktor ist nicht Technologie, sondern Genehmigungsgeschwindigkeit und Strompreis.',
-        pinned: true,
-      },
-    ],
-  },
-  {
-    id: 'notebook-thesis',
-    title: 'Masterarbeit: RAG-Systeme',
-    emoji: '📚',
-    updatedLabel: 'Gestern',
-    sources: thesisSources,
-    messages: [],
-    artifacts: [
-      {
-        id: 'artifact-3',
-        kind: 'flashcards',
-        title: 'Lernkarten: Attention & RAG',
-        meta: '24 Karten',
-        createdAt: Date.now() - 1000 * 60 * 60 * 30,
-      },
-    ],
-    notes: [],
-  },
-  {
-    id: 'notebook-market',
-    title: 'Marktanalyse DACH',
-    emoji: '📈',
-    updatedLabel: 'Vor 4 Tagen',
-    sources: marketSources,
-    messages: [],
-    artifacts: [],
-    notes: [],
-  },
-]
 
 /* -------------------------------------------------------------------------- */
 /* Simulated responses for the interactive prototype                           */
