@@ -14,7 +14,21 @@ export default defineConfig({
     baseURL,
     trace: 'on-first-retry',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'setup', testMatch: /auth\.setup\.ts/ },
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'], storageState: '.playwright/user.json' },
+      dependencies: ['setup'],
+      testIgnore: /auth\.setup\.ts|anonymous\.spec\.ts/,
+    },
+    {
+      // Runs without the stored session, for everything about being signed out.
+      name: 'anonymous',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: /anonymous\.spec\.ts/,
+    },
+  ],
   webServer: {
     // CI tests the production build. Locally the dev server is used instead:
     // a reused `next start` keeps serving the build it was started with, so

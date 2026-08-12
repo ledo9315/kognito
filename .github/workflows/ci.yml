@@ -43,6 +43,14 @@ jobs:
     runs-on: ubuntu-latest
     # Separate from `checks` so the fast feedback does not wait behind the
     # browser download, and so both run in parallel.
+    env:
+      # A Neon branch of its own, not the database behind the deployment. The
+      # specs sign up real accounts, and those should not pile up next to the
+      # demo data. The direct connection is used rather than the pooled one,
+      # because migrations are DDL in a transaction and the pooler works in
+      # transaction mode.
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
     steps:
       - uses: actions/checkout@v5
 
@@ -57,6 +65,13 @@ jobs:
 
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
+
+      # Brings the branch to the schema the code expects, which also exercises
+      # the migrations on every run. drizzle-kit is called directly here:
+      # the db:migrate script goes through dotenv-cli for .env.local, which
+      # does not exist on CI.
+      - name: Apply migrations
+        run: pnpm exec drizzle-kit migrate
 
       # CI is set by GitHub, which makes playwright.config.ts build the app and
       # test against `next start` instead of the dev server.

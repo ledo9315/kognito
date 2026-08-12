@@ -28,3 +28,4 @@ CLAUDE.md
 # Agent skill files pulled in by tooling
 .agents/
 skills-lock.json
+.env*
