@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, type FormEvent, type ReactElement } from 'react'
-import { useNotebookStore } from '@/components/notebook-store'
+import { useActionState, useState, type ReactElement } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -14,32 +13,26 @@ import {
 } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import {
+  createNotebookAction,
+  type NotebookFormState,
+} from '@/lib/notebook-actions'
 
-export function NewNotebookDialog({
-  trigger,
-  onCreated,
-}: {
-  trigger: ReactElement
-  onCreated?: (id: string) => void
-}) {
-  const { createNotebook } = useNotebookStore()
+export function NewNotebookDialog({ trigger }: { trigger: ReactElement }) {
   const [open, setOpen] = useState(false)
-  const [title, setTitle] = useState('')
+  const [state, action, pending] = useActionState<NotebookFormState, FormData>(
+    createNotebookAction,
+    null,
+  )
 
-  function submit(event: FormEvent) {
-    event.preventDefault()
-    const id = createNotebook(title.trim())
-    setOpen(false)
-    setTitle('')
-    onCreated?.(id)
-  }
-
+  // The dialog is not closed here. The action redirects to the new notebook,
+  // and closing early would show the empty overview for a moment first.
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={trigger} />
 
       <DialogContent>
-        <form onSubmit={submit} className="flex flex-col gap-4">
+        <form action={action} className="flex flex-col gap-4">
           <DialogHeader>
             <DialogTitle>Neues Notizbuch</DialogTitle>
             <DialogDescription>
@@ -53,13 +46,18 @@ export function NewNotebookDialog({
               <FieldLabel htmlFor="notebook-title">Titel</FieldLabel>
               <Input
                 id="notebook-title"
+                name="title"
                 autoFocus
                 placeholder="z. B. Recherche Q4"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
               />
             </Field>
           </FieldGroup>
+
+          {state?.error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {state.error}
+            </p>
+          ) : null}
 
           <DialogFooter>
             <Button
@@ -69,7 +67,9 @@ export function NewNotebookDialog({
             >
               Abbrechen
             </Button>
-            <Button type="submit">Erstellen</Button>
+            <Button type="submit" disabled={pending}>
+              {pending ? 'Wird angelegt…' : 'Erstellen'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

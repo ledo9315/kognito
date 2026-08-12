@@ -1,17 +1,16 @@
 import { expect, test } from '@playwright/test'
+import { createNotebook } from './helpers'
 
-test('overview lists notebooks and opens one', async ({ page }) => {
+test('a new notebook shows up in the overview', async ({ page }) => {
+  const title = `Recherche ${Date.now()}`
+  await createNotebook(page, title)
+
   await page.goto('/')
-
-  await expect(page.getByText('Kognito').first()).toBeVisible()
-  await page.getByText('Klimaneutrale Industrie 2045').click()
-
-  await expect(page).toHaveURL(/\/notebook\/notebook-climate$/)
-  await expect(page.getByRole('heading', { name: 'Quellen' })).toBeVisible()
+  await expect(page.getByRole('link', { name: new RegExp(title) })).toBeVisible()
 })
 
 test('source dialog opens, closes and returns focus', async ({ page }) => {
-  await page.goto('/notebook/notebook-climate')
+  await createNotebook(page, `Dialog ${Date.now()}`)
 
   const trigger = page.locator('[data-slot="dialog-trigger"]')
   await expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
@@ -29,15 +28,20 @@ test('source dialog opens, closes and returns focus', async ({ page }) => {
 })
 
 test('clicking a citation opens the matching source', async ({ page }) => {
-  await page.goto('/notebook/notebook-climate')
+  await createNotebook(page, `Belege ${Date.now()}`)
 
-  const citation = page.getByRole('button', { name: 'Beleg 3 anzeigen' }).first()
-  const readerHeading = page.getByRole('heading', {
-    name: 'Interview: Energiewende in der Praxis',
-  })
+  const sourceTitle = 'Beispieltext für den Belegtest'
+  await page.locator('[data-slot="dialog-trigger"]').click()
+  await page.getByRole('tab', { name: 'Text' }).click()
+  await page.getByLabel('Text einfügen').fill(sourceTitle)
+  await page.getByRole('button', { name: 'Text hinzufügen' }).click()
 
-  await expect(async () => {
-    await citation.click()
-    await expect(readerHeading).toBeVisible({ timeout: 1000 })
-  }).toPass({ timeout: 15_000 })
+  await page.getByRole('button', { name: /Fasse die Kernaussagen/ }).click()
+  const citation = page.getByRole('button', { name: 'Beleg 1 anzeigen' })
+  await expect(citation).toBeVisible({ timeout: 15_000 })
+
+  await citation.click()
+  await expect(
+    page.getByRole('heading', { name: sourceTitle }),
+  ).toBeVisible()
 })

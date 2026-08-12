@@ -36,7 +36,6 @@ export function SourcesPanel({ notebook }: { notebook: Notebook }) {
       <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
         <h2 className="text-sm font-medium">Quellen</h2>
         <AddSourceDialog
-          notebookId={notebook.id}
           trigger={
             <Button variant="outline" size="sm">
               <Plus data-icon="inline-start" />
@@ -69,7 +68,7 @@ export function SourcesPanel({ notebook }: { notebook: Notebook }) {
                 checked={allSelected}
                 indeterminate={selectedCount > 0 && !allSelected}
                 onCheckedChange={(checked) =>
-                  setAllSources(notebook.id, Boolean(checked))
+                  setAllSources(Boolean(checked))
                 }
                 aria-label="Alle Quellen auswählen"
               />
@@ -94,7 +93,7 @@ export function SourcesPanel({ notebook }: { notebook: Notebook }) {
                     <Checkbox
                       checked={source.selected}
                       onCheckedChange={() =>
-                        toggleSource(notebook.id, source.id)
+                        toggleSource(source.id)
                       }
                       className="mt-0.5"
                       aria-label={`${source.title} als Kontext verwenden`}
@@ -147,7 +146,7 @@ export function SourcesPanel({ notebook }: { notebook: Notebook }) {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             variant="destructive"
-                            onClick={() => removeSource(notebook.id, source.id)}
+                            onClick={() => removeSource(source.id)}
                           >
                             <Trash2 />
                             Entfernen

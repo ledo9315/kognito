@@ -3,7 +3,10 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Files, MessageSquare, Wand2 } from 'lucide-react'
-import { useNotebookStore } from '@/components/notebook-store'
+import {
+  NotebookStoreProvider,
+  useNotebookStore,
+} from '@/components/notebook-store'
 import { AppLogo } from '@/components/app-logo'
 import { ChatPanel } from '@/components/chat-panel'
 import { SourcesPanel } from '@/components/sources-panel'
@@ -11,45 +14,32 @@ import { SourceReader } from '@/components/source-reader'
 import { StudioPanel } from '@/components/studio-panel'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from '@/components/ui/empty'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import type { NotebookRow } from '@/lib/notebooks'
 import { cn } from '@/lib/utils'
 
 type MobileTab = 'sources' | 'chat' | 'studio'
 
-export function NotebookWorkspace({ notebookId }: { notebookId: string }) {
-  const { getNotebook, state, openSource } = useNotebookStore()
-  const notebook = getNotebook(notebookId)
-  const [mobileTab, setMobileTab] = useState<MobileTab>('chat')
+export function NotebookWorkspace({ notebook }: { notebook: NotebookRow }) {
+  return (
+    <NotebookStoreProvider
+      // A key per notebook, so switching notebooks starts a fresh reducer
+      // instead of carrying the previous simulation over.
+      key={notebook.id}
+      notebook={{
+        id: notebook.id,
+        title: notebook.title,
+        emoji: notebook.emoji,
+      }}
+    >
+      <Workspace />
+    </NotebookStoreProvider>
+  )
+}
 
-  if (!notebook) {
-    return (
-      <div className="flex min-h-svh items-center justify-center p-6">
-        <Empty className="max-w-sm border border-dashed">
-          <EmptyHeader>
-            <EmptyTitle>Notizbuch nicht gefunden</EmptyTitle>
-            <EmptyDescription>
-              Dieses Notizbuch existiert nicht oder wurde entfernt.
-            </EmptyDescription>
-          </EmptyHeader>
-          <Button
-            render={<Link href="/" />}
-            nativeButton={false}
-            variant="outline"
-            className="mx-auto"
-          >
-            <ArrowLeft data-icon="inline-start" />
-            Zur Übersicht
-          </Button>
-        </Empty>
-      </div>
-    )
-  }
+function Workspace() {
+  const { notebook, state, openSource } = useNotebookStore()
+  const [mobileTab, setMobileTab] = useState<MobileTab>('chat')
 
   const readerOpen = Boolean(state.openSourceId)
 

@@ -2,9 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { LayoutGrid, List, Plus, Search } from 'lucide-react'
-import { useNotebookStore } from '@/components/notebook-store'
+import { LayoutGrid, List, NotebookPen, Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -21,16 +19,47 @@ import {
 } from '@/components/ui/input-group'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { NewNotebookDialog } from '@/components/new-notebook-dialog'
+import type { NotebookSummary } from '@/lib/notebooks'
 
-export function NotebookGrid() {
-  const { notebooks } = useNotebookStore()
-  const router = useRouter()
+type NotebookCard = NotebookSummary & { updatedLabel: string }
+
+function sourceLabel(count: number) {
+  return `${count} ${count === 1 ? 'Quelle' : 'Quellen'}`
+}
+
+export function NotebookGrid({ notebooks }: { notebooks: NotebookCard[] }) {
+  console.log('notebooks', notebooks)
   const [query, setQuery] = useState('')
   const [view, setView] = useState<'grid' | 'list'>('grid')
 
   const filteredNotebooks = notebooks.filter((notebook) =>
     notebook.title.toLowerCase().includes(query.trim().toLowerCase()),
   )
+
+  if (notebooks.length === 0) {
+    return (
+      <Empty className="border border-dashed">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <NotebookPen />
+          </EmptyMedia>
+          <EmptyTitle>Noch kein Notizbuch</EmptyTitle>
+          <EmptyDescription>
+            Lege ein Notizbuch an, sammle darin deine Quellen und stelle Fragen
+            dazu.
+          </EmptyDescription>
+        </EmptyHeader>
+        <NewNotebookDialog
+          trigger={
+            <Button className="mx-auto">
+              <Plus data-icon="inline-start" />
+              Neues Notizbuch
+            </Button>
+          }
+        />
+      </Empty>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,7 +119,6 @@ export function NotebookGrid() {
       ) : view === 'grid' ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <NewNotebookDialog
-            onCreated={(id) => router.push(`/notebook/${id}`)}
             trigger={
               <button
                 type="button"
@@ -127,10 +155,7 @@ export function NotebookGrid() {
                 <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span>{notebook.updatedLabel}</span>
                   <span aria-hidden="true">·</span>
-                  <span>
-                    {notebook.sources.length}{' '}
-                    {notebook.sources.length === 1 ? 'Quelle' : 'Quellen'}
-                  </span>
+                  <span>{sourceLabel(notebook.sourceCount)}</span>
                 </span>
               </span>
             </Link>
@@ -151,8 +176,7 @@ export function NotebookGrid() {
                 {notebook.title}
               </span>
               <span className="hidden text-xs text-muted-foreground sm:block">
-                {notebook.sources.length}{' '}
-                {notebook.sources.length === 1 ? 'Quelle' : 'Quellen'}
+                {sourceLabel(notebook.sourceCount)}
               </span>
               <span className="w-24 shrink-0 text-right text-xs text-muted-foreground">
                 {notebook.updatedLabel}
@@ -164,7 +188,6 @@ export function NotebookGrid() {
 
       <div className="flex justify-center pt-2 sm:hidden">
         <NewNotebookDialog
-          onCreated={(id) => router.push(`/notebook/${id}`)}
           trigger={
             <Button>
               <Plus data-icon="inline-start" />

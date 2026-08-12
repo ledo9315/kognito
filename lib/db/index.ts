@@ -2,7 +2,7 @@ import { neon } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-http'
 import * as schema from '@/lib/db/schema'
 
-type Database = ReturnType<typeof create>
+export type Database = ReturnType<typeof create>
 
 function create() {
   const url = process.env.DATABASE_URL
