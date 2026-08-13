@@ -199,7 +199,10 @@ export function ChatPanel() {
                                     content={content}
                                     citations={message.metadata?.citations}
                                     onCitationClick={(citation) =>
-                                      openSource(citation.sourceId)
+                                      openSource(citation.sourceId, {
+                                        charStart: citation.charStart,
+                                        charEnd: citation.charEnd,
+                                      })
                                     }
                                   />
                                 </BubbleContent>

@@ -1,14 +1,14 @@
 'use client'
 
 import { X } from 'lucide-react'
-import { useNotebookStore } from '@/components/notebook-store'
+import { useNotebookStore, type Passage } from '@/components/notebook-store'
 import { SourceIcon, sourceKindLabel } from '@/components/source-icon'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 
 export function SourceReader() {
-  const { sources, openSourceId, openSource } = useNotebookStore()
+  const { sources, openSourceId, passage, openSource } = useNotebookStore()
   const source = sources.find((candidate) => candidate.id === openSourceId)
 
   if (!source) return null
@@ -75,11 +75,48 @@ export function SourceReader() {
           <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
             Quelltext
           </h3>
-          <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-pretty">
-            {source.content}
-          </p>
+          <SourceText content={source.content ?? ''} passage={passage} />
         </section>
       </div>
     </div>
+  )
+}
+
+function SourceText({
+  content,
+  passage,
+}: {
+  content: string
+  passage: Passage | null
+}) {
+  const marked =
+    passage &&
+    passage.charStart >= 0 &&
+    passage.charEnd > passage.charStart &&
+    passage.charEnd <= content.length
+
+  if (!marked) {
+    return (
+      <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-pretty">
+        {content}
+      </p>
+    )
+  }
+
+  return (
+    <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-pretty">
+      {content.slice(0, passage.charStart)}
+      <mark
+        key={`${passage.charStart}-${passage.charEnd}`}
+        ref={(node) => {
+          node?.scrollIntoView({ block: 'center' })
+        }}
+        data-slot="cited-passage"
+        className="rounded-sm bg-primary/15 text-foreground ring-2 ring-primary/30"
+      >
+        {content.slice(passage.charStart, passage.charEnd)}
+      </mark>
+      {content.slice(passage.charEnd)}
+    </p>
   )
 }

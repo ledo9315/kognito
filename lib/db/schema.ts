@@ -158,12 +158,13 @@ export const chunk = pgTable(
 export const messageRoles = ['user', 'assistant'] as const
 export type MessageRole = (typeof messageRoles)[number]
 
-/** A citation resolved at answer time: `[3]` in the text points at a chunk. */
 export type Citation = {
   index: number
   chunkId: string
   sourceId: string
   quote: string
+  charStart: number
+  charEnd: number
 }
 
 export const message = pgTable(

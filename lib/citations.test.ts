@@ -139,6 +139,16 @@ describe('collecting the citations of an answer', () => {
       chunkId: 'chunk-2',
       sourceId: 'source-2',
       quote: 'Nächster Termin ist der 17. März.',
+      charStart: 200,
+      charEnd: 233,
     })
+  })
+
+  it('carries the offsets, so the reader can jump into the text', () => {
+    const [citation] = citationsIn('Der Termin steht [2].', candidates)
+
+    // The passage is 33 characters long and starts at 200, exactly what the
+    // chunker wrote down. The quote is shortened, the offsets are not.
+    expect(citation.charEnd - citation.charStart).toBe(33)
   })
 })

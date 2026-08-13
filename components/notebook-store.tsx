@@ -7,9 +7,12 @@ import type { SourceItem } from '@/lib/sources'
 
 type Notebook = { id: string; title: string; emoji: string }
 
+export type Passage = { charStart: number; charEnd: number }
+
 type State = {
   selection: Record<string, boolean>
   openSourceId: string | null
+  passage: Passage | null
   artifacts: StudioArtifact[]
   notes: { id: string; title: string; body: string; pinned: boolean }[]
 }
@@ -17,7 +20,7 @@ type State = {
 type Action =
   | { type: 'select'; sourceId: string; selected: boolean }
   | { type: 'select-all'; sourceIds: string[]; selected: boolean }
-  | { type: 'open-source'; sourceId: string | null }
+  | { type: 'open-source'; sourceId: string | null; passage: Passage | null }
   | { type: 'add-artifact'; artifact: StudioArtifact }
   | { type: 'remove-artifact'; artifactId: string }
   | { type: 'add-note'; title: string; body: string }
@@ -25,6 +28,7 @@ type Action =
 const emptyState: State = {
   selection: {},
   openSourceId: null,
+  passage: null,
   artifacts: [],
   notes: [],
 }
@@ -42,7 +46,11 @@ function reducer(state: State, action: Action): State {
       return { ...state, selection }
     }
     case 'open-source':
-      return { ...state, openSourceId: action.sourceId }
+      return {
+        ...state,
+        openSourceId: action.sourceId,
+        passage: action.passage,
+      }
     case 'add-artifact':
       return { ...state, artifacts: [action.artifact, ...state.artifacts] }
     case 'remove-artifact':
@@ -75,11 +83,13 @@ type StoreValue = {
   /** The stored conversation, as it was when the page was rendered. */
   history: MessageRow[]
   openSourceId: string | null
+  /** Set when the reader was opened from a citation, null otherwise. */
+  passage: Passage | null
   artifacts: StudioArtifact[]
   notes: State['notes']
   selectSource: (sourceId: string, selected: boolean) => void
   selectAllSources: (selected: boolean) => void
-  openSource: (sourceId: string | null) => void
+  openSource: (sourceId: string | null, passage?: Passage) => void
   generateArtifact: (kind: StudioArtifactKind) => Promise<StudioArtifact>
   removeArtifact: (artifactId: string) => void
   addNote: (title: string, body: string) => void
@@ -115,6 +125,7 @@ export function NotebookStoreProvider({
       sources: merged,
       history,
       openSourceId: state.openSourceId,
+      passage: state.passage,
       artifacts: state.artifacts,
       notes: state.notes,
       selectSource: (sourceId, selected) =>
@@ -125,7 +136,8 @@ export function NotebookStoreProvider({
           sourceIds: merged.map((source) => source.id),
           selected,
         }),
-      openSource: (sourceId) => dispatch({ type: 'open-source', sourceId }),
+      openSource: (sourceId, passage) =>
+        dispatch({ type: 'open-source', sourceId, passage: passage ?? null }),
       generateArtifact: async (kind) => {
         await new Promise((resolve) => setTimeout(resolve, 1600))
         const artifact: StudioArtifact = {
