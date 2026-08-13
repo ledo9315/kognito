@@ -18,6 +18,8 @@ export function toCitations(chunks: NumberedChunk[]): Citation[] {
     chunkId: chunk.chunkId,
     sourceId: chunk.sourceId,
     quote: quoteOf(chunk.text),
+    charStart: chunk.charStart,
+    charEnd: chunk.charEnd,
   }))
 }
 
