@@ -1,9 +1,10 @@
 'use client'
 
-import { MoreHorizontal, Plus, Trash2, FileSearch } from 'lucide-react'
+import { MoreHorizontal, Plus, Trash2, FileSearch, TriangleAlert } from 'lucide-react'
 import { useNotebookStore } from '@/components/notebook-store'
 import { SourceIcon, sourceKindLabel } from '@/components/source-icon'
 import { AddSourceDialog } from '@/components/add-source-dialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -20,22 +21,22 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty'
-import type { Notebook } from '@/lib/data'
+import { deleteSourceAction } from '@/lib/source-actions'
 import { cn } from '@/lib/utils'
 
-export function SourcesPanel({ notebook }: { notebook: Notebook }) {
-  const { toggleSource, setAllSources, removeSource, openSource, state } =
+export function SourcesPanel() {
+  const { notebook, sources, openSourceId, openSource, selectSource, selectAllSources } =
     useNotebookStore()
 
-  const selectedCount = notebook.sources.filter((source) => source.selected).length
-  const allSelected =
-    notebook.sources.length > 0 && selectedCount === notebook.sources.length
+  const selectedCount = sources.filter((source) => source.selected).length
+  const allSelected = sources.length > 0 && selectedCount === sources.length
 
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
         <h2 className="text-sm font-medium">Quellen</h2>
         <AddSourceDialog
+          notebookId={notebook.id}
           trigger={
             <Button variant="outline" size="sm">
               <Plus data-icon="inline-start" />
@@ -45,7 +46,7 @@ export function SourcesPanel({ notebook }: { notebook: Notebook }) {
         />
       </header>
 
-      {notebook.sources.length === 0 ? (
+      {sources.length === 0 ? (
         <div className="flex flex-1 items-center p-4">
           <Empty className="border border-dashed">
             <EmptyHeader>
@@ -54,7 +55,7 @@ export function SourcesPanel({ notebook }: { notebook: Notebook }) {
               </EmptyMedia>
               <EmptyTitle>Noch keine Quellen</EmptyTitle>
               <EmptyDescription>
-                Füge PDFs, Websites, Videos oder eigene Notizen hinzu, damit
+                Füge ein PDF, eine Textdatei oder eine Website hinzu, damit
                 Kognito antworten kann.
               </EmptyDescription>
             </EmptyHeader>
@@ -67,21 +68,19 @@ export function SourcesPanel({ notebook }: { notebook: Notebook }) {
               <Checkbox
                 checked={allSelected}
                 indeterminate={selectedCount > 0 && !allSelected}
-                onCheckedChange={(checked) =>
-                  setAllSources(Boolean(checked))
-                }
+                onCheckedChange={(checked) => selectAllSources(Boolean(checked))}
                 aria-label="Alle Quellen auswählen"
               />
               Alle auswählen
             </label>
             <span className="font-mono text-[11px] text-muted-foreground">
-              {selectedCount}/{notebook.sources.length}
+              {selectedCount}/{sources.length}
             </span>
           </div>
 
           <ul className="scrollbar-slim flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2 pb-4">
-            {notebook.sources.map((source) => {
-              const isOpen = state.openSourceId === source.id
+            {sources.map((source) => {
+              const isOpen = openSourceId === source.id
               return (
                 <li key={source.id}>
                   <div
@@ -92,8 +91,8 @@ export function SourcesPanel({ notebook }: { notebook: Notebook }) {
                   >
                     <Checkbox
                       checked={source.selected}
-                      onCheckedChange={() =>
-                        toggleSource(source.id)
+                      onCheckedChange={(checked) =>
+                        selectSource(source.id, Boolean(checked))
                       }
                       className="mt-0.5"
                       aria-label={`${source.title} als Kontext verwenden`}
@@ -119,8 +118,12 @@ export function SourcesPanel({ notebook }: { notebook: Notebook }) {
                           <SourceIcon kind={source.kind} />
                         </span>
                         <span>{sourceKindLabel[source.kind]}</span>
-                        <span aria-hidden="true">·</span>
-                        <span className="truncate">{source.meta}</span>
+                        {source.status === 'ready' ? null : (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <SourceStatus status={source.status} />
+                          </>
+                        )}
                       </span>
                     </button>
 
@@ -139,18 +142,25 @@ export function SourcesPanel({ notebook }: { notebook: Notebook }) {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuGroup>
-                          <DropdownMenuItem
-                            onClick={() => openSource(source.id)}
-                          >
+                          <DropdownMenuItem onClick={() => openSource(source.id)}>
                             Quelle öffnen
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => removeSource(source.id)}
+                          <form
+                            action={deleteSourceAction}
+                            onSubmit={() => {
+                              if (isOpen) openSource(null)
+                            }}
                           >
-                            <Trash2 />
-                            Entfernen
-                          </DropdownMenuItem>
+                            <input type="hidden" name="sourceId" value={source.id} />
+                            <input type="hidden" name="notebookId" value={notebook.id} />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              render={<button type="submit" className="w-full" />}
+                            >
+                              <Trash2 />
+                              Entfernen
+                            </DropdownMenuItem>
+                          </form>
                         </DropdownMenuGroup>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -162,5 +172,22 @@ export function SourcesPanel({ notebook }: { notebook: Notebook }) {
         </>
       )}
     </div>
+  )
+}
+
+function SourceStatus({ status }: { status: 'processing' | 'failed' }) {
+  if (status === 'failed') {
+    return (
+      <Badge variant="destructive" className="h-4 gap-1 px-1.5 font-normal">
+        <TriangleAlert className="size-2.5" aria-hidden="true" />
+        Fehlgeschlagen
+      </Badge>
+    )
+  }
+
+  return (
+    <Badge variant="secondary" className="h-4 px-1.5 font-normal">
+      Wird gelesen
+    </Badge>
   )
 }

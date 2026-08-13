@@ -16,21 +16,27 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { NotebookRow } from '@/lib/notebooks'
+import type { SourceItem } from '@/lib/sources'
 import { cn } from '@/lib/utils'
 
 type MobileTab = 'sources' | 'chat' | 'studio'
 
-export function NotebookWorkspace({ notebook }: { notebook: NotebookRow }) {
+export function NotebookWorkspace({
+  notebook,
+  sources,
+}: {
+  notebook: NotebookRow
+  sources: SourceItem[]
+}) {
   return (
     <NotebookStoreProvider
-      // A key per notebook, so switching notebooks starts a fresh reducer
-      // instead of carrying the previous simulation over.
       key={notebook.id}
       notebook={{
         id: notebook.id,
         title: notebook.title,
         emoji: notebook.emoji,
       }}
+      sources={sources}
     >
       <Workspace />
     </NotebookStoreProvider>
@@ -38,10 +44,10 @@ export function NotebookWorkspace({ notebook }: { notebook: NotebookRow }) {
 }
 
 function Workspace() {
-  const { notebook, state, openSource } = useNotebookStore()
+  const { notebook, sources, openSourceId, openSource } = useNotebookStore()
   const [mobileTab, setMobileTab] = useState<MobileTab>('chat')
 
-  const readerOpen = Boolean(state.openSourceId)
+  const readerOpen = Boolean(openSourceId)
 
   return (
     <div className="flex h-svh flex-col overflow-hidden bg-muted/40">
@@ -59,10 +65,7 @@ function Workspace() {
           <AppLogo />
         </div>
 
-        <span
-          aria-hidden="true"
-          className="hidden h-5 w-px bg-border sm:block"
-        />
+        <span aria-hidden="true" className="hidden h-5 w-px bg-border sm:block" />
 
         <div className="flex min-w-0 items-center gap-2">
           <span aria-hidden="true" className="shrink-0 text-base leading-none">
@@ -72,19 +75,18 @@ function Workspace() {
         </div>
 
         <Badge variant="outline" className="ml-auto hidden font-normal lg:flex">
-          {notebook.sources.length}{' '}
-          {notebook.sources.length === 1 ? 'Quelle' : 'Quellen'}
+          {sources.length} {sources.length === 1 ? 'Quelle' : 'Quellen'}
         </Badge>
       </header>
 
       {/* Desktop: three columns */}
       <div className="hidden min-h-0 flex-1 gap-2 p-2 lg:flex">
         <aside className="w-72 shrink-0 overflow-hidden rounded-xl border border-border bg-background">
-          <SourcesPanel notebook={notebook} />
+          <SourcesPanel />
         </aside>
 
         <main className="min-w-0 flex-1 overflow-hidden rounded-xl border border-border bg-background">
-          <ChatPanel notebook={notebook} />
+          <ChatPanel />
         </main>
 
         <aside
@@ -93,25 +95,16 @@ function Workspace() {
             readerOpen ? 'w-104' : 'w-80',
           )}
         >
-          {readerOpen ? (
-            <SourceReader notebook={notebook} />
-          ) : (
-            <StudioPanel notebook={notebook} />
-          )}
+          {readerOpen ? <SourceReader /> : <StudioPanel />}
         </aside>
       </div>
 
       {/* Mobile / tablet: tabs */}
       <div className="flex min-h-0 flex-1 flex-col lg:hidden">
         <div className="min-h-0 flex-1 overflow-hidden bg-background">
-          {mobileTab === 'sources' && <SourcesPanel notebook={notebook} />}
-          {mobileTab === 'chat' &&
-            (readerOpen ? (
-              <SourceReader notebook={notebook} />
-            ) : (
-              <ChatPanel notebook={notebook} />
-            ))}
-          {mobileTab === 'studio' && <StudioPanel notebook={notebook} />}
+          {mobileTab === 'sources' && <SourcesPanel />}
+          {mobileTab === 'chat' && (readerOpen ? <SourceReader /> : <ChatPanel />)}
+          {mobileTab === 'studio' && <StudioPanel />}
         </div>
 
         <nav className="flex shrink-0 justify-center border-t border-border bg-background px-3 py-2">

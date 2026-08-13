@@ -30,19 +30,19 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from '@/components/ui/message-scroller'
-import { suggestedQuestions, type Notebook } from '@/lib/data'
+import { suggestedQuestions } from '@/lib/data'
 
-export function ChatPanel({ notebook }: { notebook: Notebook }) {
-  const { askQuestion, clearChat, openSource, state, addNote } =
+export function ChatPanel() {
+  const { notebook, sources, messages, thinking, askQuestion, clearChat, openSource, addNote } =
     useNotebookStore()
   const [draft, setDraft] = useState('')
 
-  const selectedCount = notebook.sources.filter((source) => source.selected).length
-  const isEmpty = notebook.messages.length === 0
+  const selectedCount = sources.filter((source) => source.selected).length
+  const isEmpty = messages.length === 0
 
   async function send(question: string) {
     const value = question.trim()
-    if (!value || state.thinking) return
+    if (!value || thinking) return
     setDraft('')
     await askQuestion(value)
   }
@@ -111,7 +111,7 @@ export function ChatPanel({ notebook }: { notebook: Notebook }) {
                     </MarkerContent>
                   </Marker>
 
-                  {notebook.messages.map((message) => (
+                  {messages.map((message) => (
                     <MessageScrollerItem
                       key={message.id}
                       messageId={message.id}
@@ -174,7 +174,7 @@ export function ChatPanel({ notebook }: { notebook: Notebook }) {
                     </MessageScrollerItem>
                   ))}
 
-                  {state.thinking && (
+                  {thinking && (
                     <MessageScrollerItem messageId="thinking">
                       <Message align="start">
                         <MessageContent>
@@ -248,7 +248,7 @@ export function ChatPanel({ notebook }: { notebook: Notebook }) {
                   size="icon-sm"
                   variant="default"
                   className="ml-auto"
-                  disabled={!draft.trim() || state.thinking}
+                  disabled={!draft.trim() || thinking}
                   aria-label="Frage senden"
                 >
                   <ArrowUp />

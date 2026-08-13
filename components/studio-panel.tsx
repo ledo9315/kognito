@@ -24,7 +24,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@/components/ui/item'
-import type { Notebook, StudioArtifactKind } from '@/lib/data'
+import type { StudioArtifactKind } from '@/lib/data'
 
 const generators: {
   kind: StudioArtifactKind
@@ -77,12 +77,13 @@ const artifactIcons: Record<
   flashcards: Layers,
 }
 
-export function StudioPanel({ notebook }: { notebook: Notebook }) {
-  const { generateArtifact, removeArtifact } = useNotebookStore()
+export function StudioPanel() {
+  const { notebook, sources, artifacts, notes, generateArtifact, removeArtifact } =
+    useNotebookStore()
   const [pending, setPending] = useState<StudioArtifactKind | null>(null)
 
-  const selectedCount = notebook.sources.filter((source) => source.selected).length
-  const audioArtifact = notebook.artifacts.find((artifact) => artifact.kind === 'audio')
+  const selectedCount = sources.filter((source) => source.selected).length
+  const audioArtifact = artifacts.find((artifact) => artifact.kind === 'audio')
 
   async function generate(kind: StudioArtifactKind) {
     if (selectedCount === 0) {
@@ -153,14 +154,14 @@ export function StudioPanel({ notebook }: { notebook: Notebook }) {
             Ergebnisse
           </h3>
 
-          {notebook.artifacts.length === 0 && notebook.notes.length === 0 ? (
+          {artifacts.length === 0 && notes.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs leading-relaxed text-muted-foreground">
               Noch nichts erstellt. Wähle oben ein Format, um aus deinen Quellen
               eine Zusammenfassung, Lernhilfe oder Audio-Übersicht zu erzeugen.
             </p>
           ) : (
             <div className="flex flex-col gap-2">
-              {notebook.artifacts.map((artifact) => {
+              {artifacts.map((artifact) => {
                 const Icon = artifactIcons[artifact.kind]
                 return (
                   <Item key={artifact.id} variant="outline" size="sm">
@@ -185,7 +186,7 @@ export function StudioPanel({ notebook }: { notebook: Notebook }) {
                 )
               })}
 
-              {notebook.notes.map((note) => (
+              {notes.map((note) => (
                 <Item key={note.id} variant="outline" size="sm">
                   <ItemMedia variant="icon">
                     <FileText />

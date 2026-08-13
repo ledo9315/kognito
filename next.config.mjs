@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    // Uploads go through a server action, and those are capped at 1 MB by
+    // default. The action itself refuses anything above 10 MB.
+    serverActions: { bodySizeLimit: '11mb' },
+  },
   async headers() {
     return [
       {
