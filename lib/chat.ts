@@ -1,4 +1,5 @@
 import { streamText, type LanguageModel, type ModelMessage } from 'ai'
+import { citationsIn, toCitations } from '@/lib/citations'
 import { buildPrompt, getContextChunks, NoContextError } from '@/lib/context'
 import { getDb, type Database } from '@/lib/db'
 import { saveMessage } from '@/lib/messages'
@@ -77,6 +78,8 @@ export async function streamAnswer(
     db,
   )
 
+  const citations = toCitations(prompt.chunks)
+
   const result = streamText({
     model,
     system: prompt.system,
@@ -91,12 +94,12 @@ export async function streamAnswer(
           notebookId: input.notebookId,
           role: 'assistant',
           content: text,
-          citations: [],
+          citations: citationsIn(text, citations),
         },
         db,
       )
     },
   })
 
-  return { result, prompt }
+  return { result, prompt, citations }
 }

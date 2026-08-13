@@ -97,6 +97,25 @@ describe('answering a question', () => {
     ])
   })
 
+  it('stores the answer with the passages it cited', async () => {
+    const { ownerId, notebookId, sourceId } = await setUp('alice')
+    const { model } = mockModel(['Der Termin steht [2], der Rest nicht [99].'])
+
+    const { result, prompt } = await streamAnswer(
+      { notebookId, ownerId, question: 'Wann?', sourceIds: [sourceId] },
+      { model, db: database.db },
+    )
+    await read(result)
+
+    const [, answer] = await listMessages(notebookId, ownerId, database.db)
+    expect(answer.citations).toHaveLength(1)
+    expect(answer.citations[0].index).toBe(2)
+    // The number points at the second passage of the prompt, and that is the
+    // passage the reader will jump to.
+    expect(answer.citations[0].chunkId).toBe(prompt.chunks[1].chunkId)
+    expect(answer.citations[0].quote.length).toBeGreaterThan(0)
+  })
+
   it('hands the model the numbered passages and the rules', async () => {
     const { ownerId, notebookId, sourceId } = await setUp('alice')
     const { model, seen } = mockModel(['Antwort'])
