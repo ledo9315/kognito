@@ -180,6 +180,39 @@ test('a model that fails mid-stream says so instead of staying empty', async ({
   await expect(page.getByRole('main').getByRole('button', { name: 'Kopieren' })).toHaveCount(0)
 })
 
+test('a rate limit says so, instead of the general failure', async ({ page }) => {
+  await createNotebook(page, `Limit ${Date.now()}`)
+  await addTextSource(page, 'Eine Quelle mit Inhalt.')
+
+  // The shape the route really sends: the reason as json, so the interface
+  // reads a refusal and a failed stream the same way.
+  const reason = JSON.stringify({
+    error:
+      'Das Modell ist gerade ausgelastet oder das Limit ist erreicht. Bitte versuche es in ein paar Minuten noch einmal.',
+  })
+
+  await page.route('**/api/chat', (route) =>
+    route.fulfill({
+      status: 200,
+      headers: {
+        'content-type': 'text/event-stream',
+        'x-vercel-ai-ui-message-stream': 'v1',
+      },
+      body:
+        'data: {"type":"start"}\n\n' +
+        `data: ${JSON.stringify({ type: 'error', errorText: reason })}\n\n` +
+        'data: [DONE]\n\n',
+    }),
+  )
+
+  await page.getByRole('textbox', { name: 'Frage eingeben' }).fill('Und jetzt?')
+  await page.getByRole('button', { name: 'Frage senden' }).click()
+
+  await expect(page.getByRole('main').getByRole('alert')).toContainText(
+    'in ein paar Minuten',
+  )
+})
+
 test('a refusal from the route is shown instead of an answer', async ({
   page,
 }) => {

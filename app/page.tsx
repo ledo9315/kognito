@@ -29,12 +29,6 @@ export default async function Page() {
         <NotebookGrid notebooks={notebooks} />
       </main>
 
-      <footer className="border-t border-border">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-1 px-5 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <span>Kognito: NotebookLM-Klon als MVP-Prototyp</span>
-          <span>Alle Antworten und Quellen sind simuliert.</span>
-        </div>
-      </footer>
     </div>
   )
 }

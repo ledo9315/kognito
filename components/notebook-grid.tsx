@@ -28,7 +28,6 @@ function sourceLabel(count: number) {
 }
 
 export function NotebookGrid({ notebooks }: { notebooks: NotebookCard[] }) {
-  console.log('notebooks', notebooks)
   const [query, setQuery] = useState('')
   const [view, setView] = useState<'grid' | 'list'>('grid')
 
