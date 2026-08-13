@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createTestDb } from '@/lib/db/test-db'
-import { notebook, source, user } from '@/lib/db/schema'
+import { chunk, message, notebook, source, user } from '@/lib/db/schema'
 import {
   createNotebook,
   deleteNotebook,
@@ -8,6 +8,8 @@ import {
   listNotebooks,
   renameNotebook,
 } from '@/lib/notebooks'
+import { saveMessage } from '@/lib/messages'
+import { createSource } from '@/lib/sources'
 
 let database: Awaited<ReturnType<typeof createTestDb>>
 
@@ -68,6 +70,61 @@ describe('owner scoping', () => {
 
     expect(await deleteNotebook(notebookOfAlice.id, alice, database.db)).toBe(true)
     expect(await findNotebook(notebookOfAlice.id, alice, database.db)).toBeNull()
+  })
+})
+
+describe('deleting a notebook', () => {
+  it('takes sources, chunks and messages with it', async () => {
+    const ownerId = await createUser('alice')
+    const created = await createNotebook(ownerId, 'Weg damit', database.db)
+
+    const stored = await createSource(
+      {
+        notebookId: created.id,
+        ownerId,
+        title: 'Bericht',
+        kind: 'text',
+        text: 'Ein Satz, der lang genug ist, um Abschnitte zu füllen. '.repeat(40),
+      },
+      database.db,
+    )
+    await saveMessage(
+      { notebookId: created.id, role: 'user', content: 'Eine Frage?' },
+      database.db,
+    )
+
+    expect(stored!.chunkCount).toBeGreaterThan(1)
+
+    expect(await deleteNotebook(created.id, ownerId, database.db)).toBe(true)
+
+    // The cascade sits on the foreign keys, so nothing here deletes the
+    // children by hand. This test is what proves it actually fires.
+    expect(await database.db.select().from(source)).toEqual([])
+    expect(await database.db.select().from(chunk)).toEqual([])
+    expect(await database.db.select().from(message)).toEqual([])
+  })
+
+  it('leaves the notebooks of another account untouched', async () => {
+    const alice = await createUser('alice')
+    const bob = await createUser('bob')
+    const hers = await createNotebook(alice, 'Ihres', database.db)
+    const his = await createNotebook(bob, 'Seins', database.db)
+
+    await createSource(
+      {
+        notebookId: his.id,
+        ownerId: bob,
+        title: 'Bobs Quelle',
+        kind: 'text',
+        text: 'Text',
+      },
+      database.db,
+    )
+
+    await deleteNotebook(hers.id, alice, database.db)
+
+    expect(await database.db.select().from(source)).toHaveLength(1)
+    expect(await findNotebook(his.id, bob, database.db)).not.toBeNull()
   })
 })
 

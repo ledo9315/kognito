@@ -1,8 +1,17 @@
 import { expect, type Page } from '@playwright/test'
 
-/** Unique per call, so specs running in parallel never share an account. */
 export function uniqueEmail(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@kognito.test`
+}
+
+export async function storedAfter(page: Page, click: Promise<void>) {
+  const stored = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().includes('/notebook/'),
+  )
+  await click
+  await stored
 }
 
 export async function signUp(page: Page, name: string) {
@@ -24,13 +33,6 @@ export async function signOut(page: Page) {
   await expect(page).toHaveURL(/\/sign-in/)
 }
 
-/**
- * Creates a notebook from the overview and waits for its workspace.
- *
- * The trigger appears more than once once the overview is no longer empty,
- * on the dashed card and on the button below the list. Any of them opens the
- * same dialog.
- */
 export async function createNotebook(page: Page, title: string) {
   await page.goto('/')
   await page.getByRole('button', { name: /Neues Notizbuch/ }).first().click()

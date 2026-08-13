@@ -9,6 +9,7 @@ import {
 } from '@/components/notebook-store'
 import { AppLogo } from '@/components/app-logo'
 import { ChatPanel } from '@/components/chat-panel'
+import { NotebookTitle } from '@/components/notebook-title'
 import { SourcesPanel } from '@/components/sources-panel'
 import { SourceReader } from '@/components/source-reader'
 import { StudioPanel } from '@/components/studio-panel'
@@ -71,12 +72,11 @@ function Workspace() {
 
         <span aria-hidden="true" className="hidden h-5 w-px bg-border sm:block" />
 
-        <div className="flex min-w-0 items-center gap-2">
-          <span aria-hidden="true" className="shrink-0 text-base leading-none">
-            {notebook.emoji}
-          </span>
-          <h1 className="truncate text-sm font-medium">{notebook.title}</h1>
-        </div>
+        <NotebookTitle
+          notebookId={notebook.id}
+          title={notebook.title}
+          emoji={notebook.emoji}
+        />
 
         <Badge variant="outline" className="ml-auto hidden font-normal lg:flex">
           {sources.length} {sources.length === 1 ? 'Quelle' : 'Quellen'}
