@@ -15,6 +15,7 @@ import { StudioPanel } from '@/components/studio-panel'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import type { MessageRow } from '@/lib/messages'
 import type { NotebookRow } from '@/lib/notebooks'
 import type { SourceItem } from '@/lib/sources'
 import { cn } from '@/lib/utils'
@@ -24,9 +25,11 @@ type MobileTab = 'sources' | 'chat' | 'studio'
 export function NotebookWorkspace({
   notebook,
   sources,
+  history,
 }: {
   notebook: NotebookRow
   sources: SourceItem[]
+  history: MessageRow[]
 }) {
   return (
     <NotebookStoreProvider
@@ -37,6 +40,7 @@ export function NotebookWorkspace({
         emoji: notebook.emoji,
       }}
       sources={sources}
+      history={history}
     >
       <Workspace />
     </NotebookStoreProvider>

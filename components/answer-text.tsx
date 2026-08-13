@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment } from 'react'
-import type { Citation } from '@/lib/data'
+import type { Citation } from '@/lib/db/schema'
 import {
   Tooltip,
   TooltipContent,

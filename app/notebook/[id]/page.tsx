@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { NotebookWorkspace } from '@/components/notebook-workspace'
+import { listMessages } from '@/lib/messages'
 import { findNotebook } from '@/lib/notebooks'
 import { requireSession } from '@/lib/session'
 import { listSources } from '@/lib/sources'
@@ -17,7 +18,12 @@ export default async function NotebookPage({
   const notebook = await findNotebook(id, session.user.id)
   if (!notebook) notFound()
 
-  const sources = await listSources(notebook.id, session.user.id)
+  const [sources, history] = await Promise.all([
+    listSources(notebook.id, session.user.id),
+    listMessages(notebook.id, session.user.id),
+  ])
 
-  return <NotebookWorkspace notebook={notebook} sources={sources} />
+  return (
+    <NotebookWorkspace notebook={notebook} sources={sources} history={history} />
+  )
 }
