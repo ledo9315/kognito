@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { NotebookWorkspace } from '@/components/notebook-workspace'
 import { findNotebook } from '@/lib/notebooks'
 import { requireSession } from '@/lib/session'
+import { listSources } from '@/lib/sources'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,5 +17,7 @@ export default async function NotebookPage({
   const notebook = await findNotebook(id, session.user.id)
   if (!notebook) notFound()
 
-  return <NotebookWorkspace notebook={notebook} />
+  const sources = await listSources(notebook.id, session.user.id)
+
+  return <NotebookWorkspace notebook={notebook} sources={sources} />
 }

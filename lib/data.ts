@@ -1,24 +1,4 @@
-/**
- * What is left of the prototype: the shapes the panels render and a simulated
- * answer, so the workspace can be clicked through before the real pipeline
- * exists. The notebooks themselves come from the database now.
- *
- * Issues 7 to 12 replace this file piece by piece. Nothing new should be
- * built on it.
- */
 
-export type SourceKind = 'pdf' | 'doc' | 'web' | 'youtube' | 'text' | 'audio'
-
-export type Source = {
-  id: string
-  title: string
-  kind: SourceKind
-  meta: string
-  selected: boolean
-  summary: string
-  /** Short excerpts used as citation evidence. */
-  excerpts: string[]
-}
 
 export type Citation = {
   sourceId: string
@@ -48,17 +28,6 @@ export type StudioArtifact = {
   title: string
   meta: string
   createdAt: number
-}
-
-/** One open notebook, as the panels see it. */
-export type Notebook = {
-  id: string
-  title: string
-  emoji: string
-  sources: Source[]
-  messages: ChatMessage[]
-  artifacts: StudioArtifact[]
-  notes: { id: string; title: string; body: string; pinned: boolean }[]
 }
 
 /* -------------------------------------------------------------------------- */
@@ -109,9 +78,17 @@ Abschnitt 4 ist derzeit am dünnsten belegt. Dort würde ich vor dem Vortrag nac
   },
 ]
 
+/** Only what the simulation needs, so it fits any source shape. */
+type CitableSource = {
+  id: string
+  title: string
+  content: string | null
+  selected: boolean
+}
+
 export function simulateAnswer(
   question: string,
-  sources: Source[],
+  sources: CitableSource[],
 ): { content: string; citations: Citation[] } {
   const activeSources = sources.filter((source) => source.selected)
   if (activeSources.length === 0) {
@@ -133,11 +110,18 @@ export function simulateAnswer(
     citations.push({
       sourceId: source.id,
       index: i + 1,
-      quote: source.excerpts[0] ?? source.summary,
+      quote: opening(source),
     })
   }
 
   return { content: pick.content, citations }
+}
+
+/** Stands in for a real citation until the model picks the passage itself. */
+function opening(source: CitableSource) {
+  const text = source.content?.trim() ?? ''
+  if (!text) return source.title
+  return text.length > 180 ? `${text.slice(0, 180)}…` : text
 }
 
 function hash(value: string) {

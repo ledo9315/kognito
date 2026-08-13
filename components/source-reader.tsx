@@ -6,13 +6,10 @@ import { SourceIcon, sourceKindLabel } from '@/components/source-icon'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import type { Notebook } from '@/lib/data'
 
-export function SourceReader({ notebook }: { notebook: Notebook }) {
-  const { state, openSource } = useNotebookStore()
-  const source = notebook.sources.find(
-    (candidate) => candidate.id === state.openSourceId,
-  )
+export function SourceReader() {
+  const { sources, openSourceId, openSource } = useNotebookStore()
+  const source = sources.find((candidate) => candidate.id === openSourceId)
 
   if (!source) return null
 
@@ -25,8 +22,19 @@ export function SourceReader({ notebook }: { notebook: Notebook }) {
               <SourceIcon kind={source.kind} />
             </span>
             {sourceKindLabel[source.kind]}
-            <span aria-hidden="true">·</span>
-            {source.meta}
+            {source.url ? (
+              <>
+                <span aria-hidden="true">·</span>
+                <a
+                  href={source.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="truncate underline"
+                >
+                  Original öffnen
+                </a>
+              </>
+            ) : null}
           </span>
           <h2 className="text-sm leading-snug font-medium text-pretty">
             {source.title}
@@ -43,47 +51,34 @@ export function SourceReader({ notebook }: { notebook: Notebook }) {
       </header>
 
       <div className="scrollbar-slim flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
-        <section className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              Zusammenfassung
-            </h3>
-            <Badge variant="secondary" className="font-normal">
-              KI-generiert
-            </Badge>
-          </div>
-          <p className="text-[13px] leading-relaxed text-pretty">
-            {source.summary}
-          </p>
-        </section>
+        {source.summary ? (
+          <>
+            <section className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                  Zusammenfassung
+                </h3>
+                <Badge variant="secondary" className="font-normal">
+                  KI-generiert
+                </Badge>
+              </div>
+              <p className="text-[13px] leading-relaxed text-pretty">
+                {source.summary}
+              </p>
+            </section>
 
-        <Separator />
+            <Separator />
+          </>
+        ) : null}
 
         <section className="flex flex-col gap-2.5">
           <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Belegstellen
+            Quelltext
           </h3>
-          <ul className="flex flex-col gap-2.5">
-            {source.excerpts.map((excerpt, index) => (
-              <li
-                key={index}
-                className="flex gap-3 rounded-lg border-l-2 border-primary/40 bg-muted/60 px-3 py-2.5"
-              >
-                <span className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-                  {index + 1}
-                </span>
-                <span className="text-[13px] leading-relaxed text-pretty">
-                  {excerpt}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-pretty">
+            {source.content}
+          </p>
         </section>
-
-        <p className="rounded-lg bg-muted px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
-          Im Prototyp wird nur ein Auszug dargestellt. In der Vollversion siehst
-          du hier das vollständige Dokument mit hervorgehobenen Belegstellen.
-        </p>
       </div>
     </div>
   )

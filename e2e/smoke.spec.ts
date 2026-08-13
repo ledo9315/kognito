@@ -36,6 +36,10 @@ test('clicking a citation opens the matching source', async ({ page }) => {
   await page.getByLabel('Text einfügen').fill(sourceTitle)
   await page.getByRole('button', { name: 'Text hinzufügen' }).click()
 
+  // Wait for the stored source to reach the list. Asking earlier means asking
+  // without a source, and the answer then carries no citation at all.
+  await expect(page.getByText('1/1')).toBeVisible({ timeout: 20_000 })
+
   await page.getByRole('button', { name: /Fasse die Kernaussagen/ }).click()
   const citation = page.getByRole('button', { name: 'Beleg 1 anzeigen' })
   await expect(citation).toBeVisible({ timeout: 15_000 })

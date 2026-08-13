@@ -4,34 +4,25 @@ import { createContext, useContext, useMemo, useReducer, type ReactNode } from '
 import {
   simulateAnswer,
   type ChatMessage,
-  type Notebook,
-  type Source,
-  type SourceKind,
   type StudioArtifact,
   type StudioArtifactKind,
 } from '@/lib/data'
+import type { SourceItem } from '@/lib/sources'
 
-/**
- * Holds one notebook, the one currently open.
- *
- * Identity and title come from the database. Sources, messages, artifacts and
- * notes are still the prototype simulation and live only in this reducer, so
- * they are gone on reload. Issues 9 to 12 move them to the server one at a
- * time, and this store shrinks with every one of them.
- */
+type Notebook = { id: string; title: string; emoji: string }
 
 type State = {
-  notebook: Notebook
-  /** Source currently open in the reader panel. */
+  selection: Record<string, boolean>
   openSourceId: string | null
   thinking: boolean
+  messages: ChatMessage[]
+  artifacts: StudioArtifact[]
+  notes: { id: string; title: string; body: string; pinned: boolean }[]
 }
 
 type Action =
-  | { type: 'toggle-source'; sourceId: string }
-  | { type: 'set-all-sources'; selected: boolean }
-  | { type: 'add-source'; source: Source }
-  | { type: 'remove-source'; sourceId: string }
+  | { type: 'select'; sourceId: string; selected: boolean }
+  | { type: 'select-all'; sourceIds: string[]; selected: boolean }
   | { type: 'open-source'; sourceId: string | null }
   | { type: 'add-message'; message: ChatMessage }
   | { type: 'clear-messages' }
@@ -40,67 +31,52 @@ type Action =
   | { type: 'remove-artifact'; artifactId: string }
   | { type: 'add-note'; title: string; body: string }
 
-function update(state: State, changes: Partial<Notebook>): State {
-  return { ...state, notebook: { ...state.notebook, ...changes } }
+const emptyState: State = {
+  selection: {},
+  openSourceId: null,
+  thinking: false,
+  messages: [],
+  artifacts: [],
+  notes: [],
 }
 
 function reducer(state: State, action: Action): State {
-  const { notebook } = state
-
   switch (action.type) {
-    case 'toggle-source':
-      return update(state, {
-        sources: notebook.sources.map((source) =>
-          source.id === action.sourceId
-            ? { ...source, selected: !source.selected }
-            : source,
-        ),
-      })
-    case 'set-all-sources':
-      return update(state, {
-        sources: notebook.sources.map((source) => ({
-          ...source,
-          selected: action.selected,
-        })),
-      })
-    case 'add-source':
-      return update(state, { sources: [action.source, ...notebook.sources] })
-    case 'remove-source':
-      return update(state, {
-        sources: notebook.sources.filter(
-          (source) => source.id !== action.sourceId,
-        ),
-      })
+    case 'select':
+      return {
+        ...state,
+        selection: { ...state.selection, [action.sourceId]: action.selected },
+      }
+    case 'select-all': {
+      const selection = { ...state.selection }
+      for (const sourceId of action.sourceIds) selection[sourceId] = action.selected
+      return { ...state, selection }
+    }
     case 'open-source':
       return { ...state, openSourceId: action.sourceId }
     case 'add-message':
-      return update(state, { messages: [...notebook.messages, action.message] })
+      return { ...state, messages: [...state.messages, action.message] }
     case 'clear-messages':
-      return update(state, { messages: [] })
+      return { ...state, messages: [] }
     case 'set-thinking':
       return { ...state, thinking: action.value }
     case 'add-artifact':
-      return update(state, {
-        artifacts: [action.artifact, ...notebook.artifacts],
-      })
+      return { ...state, artifacts: [action.artifact, ...state.artifacts] }
     case 'remove-artifact':
-      return update(state, {
-        artifacts: notebook.artifacts.filter(
+      return {
+        ...state,
+        artifacts: state.artifacts.filter(
           (artifact) => artifact.id !== action.artifactId,
         ),
-      })
+      }
     case 'add-note':
-      return update(state, {
+      return {
+        ...state,
         notes: [
-          {
-            id: uid('note'),
-            title: action.title,
-            body: action.body,
-            pinned: false,
-          },
-          ...notebook.notes,
+          { id: uid('note'), title: action.title, body: action.body, pinned: false },
+          ...state.notes,
         ],
-      })
+      }
     default:
       return state
   }
@@ -111,12 +87,15 @@ function uid(prefix: string) {
 }
 
 type StoreValue = {
-  state: State
   notebook: Notebook
-  toggleSource: (sourceId: string) => void
-  setAllSources: (selected: boolean) => void
-  addSource: (input: { title: string; kind: SourceKind; meta: string }) => void
-  removeSource: (sourceId: string) => void
+  sources: SourceItem[]
+  openSourceId: string | null
+  thinking: boolean
+  messages: ChatMessage[]
+  artifacts: StudioArtifact[]
+  notes: State['notes']
+  selectSource: (sourceId: string, selected: boolean) => void
+  selectAllSources: (selected: boolean) => void
   openSource: (sourceId: string | null) => void
   askQuestion: (question: string) => Promise<void>
   clearChat: () => void
@@ -129,47 +108,41 @@ const StoreContext = createContext<StoreValue | null>(null)
 
 export function NotebookStoreProvider({
   notebook,
+  sources,
   children,
 }: {
-  notebook: { id: string; title: string; emoji: string }
+  notebook: Notebook
+  sources: SourceItem[]
   children: ReactNode
 }) {
-  const [state, dispatch] = useReducer(reducer, {
-    notebook: {
-      ...notebook,
-      sources: [],
-      messages: [],
-      artifacts: [],
-      notes: [],
-    },
-    openSourceId: null,
-    thinking: false,
-  })
+  const [state, dispatch] = useReducer(reducer, emptyState)
+
+  const merged = useMemo(
+    () =>
+      sources.map((source) => ({
+        ...source,
+        selected: state.selection[source.id] ?? source.selected,
+      })),
+    [sources, state.selection],
+  )
 
   const value = useMemo<StoreValue>(() => {
     return {
-      state,
-      notebook: state.notebook,
-      toggleSource: (sourceId) => dispatch({ type: 'toggle-source', sourceId }),
-      setAllSources: (selected) =>
-        dispatch({ type: 'set-all-sources', selected }),
-      addSource: (input) =>
+      notebook,
+      sources: merged,
+      openSourceId: state.openSourceId,
+      thinking: state.thinking,
+      messages: state.messages,
+      artifacts: state.artifacts,
+      notes: state.notes,
+      selectSource: (sourceId, selected) =>
+        dispatch({ type: 'select', sourceId, selected }),
+      selectAllSources: (selected) =>
         dispatch({
-          type: 'add-source',
-          source: {
-            id: uid('source'),
-            title: input.title,
-            kind: input.kind,
-            meta: input.meta,
-            selected: true,
-            summary:
-              'Diese Quelle wurde gerade hinzugefügt. In der Vollversion erzeugt das Modell hier automatisch eine Zusammenfassung.',
-            excerpts: [
-              'Auszug wird nach der Verarbeitung der Quelle verfügbar.',
-            ],
-          },
+          type: 'select-all',
+          sourceIds: merged.map((source) => source.id),
+          selected,
         }),
-      removeSource: (sourceId) => dispatch({ type: 'remove-source', sourceId }),
       openSource: (sourceId) => dispatch({ type: 'open-source', sourceId }),
       clearChat: () => dispatch({ type: 'clear-messages' }),
       askQuestion: async (question) => {
@@ -186,10 +159,7 @@ export function NotebookStoreProvider({
 
         await new Promise((resolve) => setTimeout(resolve, 1400))
 
-        const { content, citations } = simulateAnswer(
-          question,
-          state.notebook.sources,
-        )
+        const { content, citations } = simulateAnswer(question, merged)
         dispatch({
           type: 'add-message',
           message: {
@@ -218,7 +188,7 @@ export function NotebookStoreProvider({
         dispatch({ type: 'remove-artifact', artifactId }),
       addNote: (title, body) => dispatch({ type: 'add-note', title, body }),
     }
-  }, [state])
+  }, [notebook, merged, state])
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }
