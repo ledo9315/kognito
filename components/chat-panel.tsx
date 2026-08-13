@@ -86,7 +86,8 @@ export function ChatPanel() {
 
   function send(question: string) {
     const value = question.trim()
-    if (!value || busy) return
+
+    if (!value || busy || selectedCount === 0) return
     setDraft('')
     setFailure(null)
     void sendMessage(
@@ -147,8 +148,9 @@ export function ChatPanel() {
                 <button
                   key={question}
                   type="button"
+                  disabled={selectedCount === 0}
                   onClick={() => send(question)}
-                  className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-3.5 py-2.5 text-left text-[13px] transition-colors hover:border-primary/40 hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none"
+                  className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-3.5 py-2.5 text-left text-[13px] transition-colors hover:border-primary/40 hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
                 >
                   <Sparkles
                     className="size-3.5 shrink-0 text-muted-foreground"
@@ -291,6 +293,7 @@ export function ChatPanel() {
             <InputGroup>
               <InputGroupTextarea
                 rows={2}
+                disabled={selectedCount === 0}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={(event) => {
@@ -324,7 +327,7 @@ export function ChatPanel() {
                   size="icon-sm"
                   variant="default"
                   className="ml-auto"
-                  disabled={!draft.trim() || busy}
+                  disabled={!draft.trim() || busy || selectedCount === 0}
                   aria-label="Frage senden"
                 >
                   <ArrowUp />

@@ -93,6 +93,45 @@ export async function createSource(
   return { id, chunkCount: pieces.length }
 }
 
+export async function setSourceSelected(
+  id: string,
+  ownerId: string,
+  selected: boolean,
+  db: Database = getDb(),
+) {
+  const owned = await db
+    .select({ id: source.id })
+    .from(source)
+    .innerJoin(notebook, eq(notebook.id, source.notebookId))
+    .where(and(eq(source.id, id), eq(notebook.ownerId, ownerId)))
+
+  if (owned.length === 0) return false
+
+  await db.update(source).set({ selected }).where(eq(source.id, id))
+  return true
+}
+
+/** The check mark in the column header, for every source of one notebook. */
+export async function setAllSourcesSelected(
+  notebookId: string,
+  ownerId: string,
+  selected: boolean,
+  db: Database = getDb(),
+) {
+  const owned = await db
+    .select({ id: notebook.id })
+    .from(notebook)
+    .where(and(eq(notebook.id, notebookId), eq(notebook.ownerId, ownerId)))
+
+  if (owned.length === 0) return false
+
+  await db
+    .update(source)
+    .set({ selected })
+    .where(eq(source.notebookId, notebookId))
+  return true
+}
+
 /** Returns false when the source does not exist or belongs to someone else. */
 export async function deleteSource(
   id: string,

@@ -1,7 +1,12 @@
 'use client'
 
 import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react'
+import { toast } from 'sonner'
 import type { StudioArtifact, StudioArtifactKind } from '@/lib/data'
+import {
+  selectAllSourcesAction,
+  selectSourceAction,
+} from '@/lib/source-actions'
 import type { MessageRow } from '@/lib/messages'
 import type { SourceItem } from '@/lib/sources'
 
@@ -77,6 +82,16 @@ function uid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`
 }
 
+async function keepOrUndo(stored: Promise<boolean>, undo: () => void) {
+  try {
+    if (await stored) return
+  } catch {
+    // A failed write and a refused one lead to the same place.
+  }
+  undo()
+  toast.error('Die Auswahl konnte nicht gespeichert werden.')
+}
+
 type StoreValue = {
   notebook: Notebook
   sources: SourceItem[]
@@ -128,14 +143,23 @@ export function NotebookStoreProvider({
       passage: state.passage,
       artifacts: state.artifacts,
       notes: state.notes,
-      selectSource: (sourceId, selected) =>
-        dispatch({ type: 'select', sourceId, selected }),
-      selectAllSources: (selected) =>
-        dispatch({
-          type: 'select-all',
-          sourceIds: merged.map((source) => source.id),
-          selected,
-        }),
+      // The check mark reacts at once and the write follows. If the write
+      // fails the mark goes back, because a mark that lies decides which
+      // sources answer the next question.
+      selectSource: (sourceId, selected) => {
+        dispatch({ type: 'select', sourceId, selected })
+        void keepOrUndo(selectSourceAction(sourceId, selected), () =>
+          dispatch({ type: 'select', sourceId, selected: !selected }),
+        )
+      },
+      selectAllSources: (selected) => {
+        const sourceIds = merged.map((source) => source.id)
+        dispatch({ type: 'select-all', sourceIds, selected })
+        void keepOrUndo(
+          selectAllSourcesAction(notebook.id, selected),
+          () => dispatch({ type: 'select-all', sourceIds, selected: !selected }),
+        )
+      },
       openSource: (sourceId, passage) =>
         dispatch({ type: 'open-source', sourceId, passage: passage ?? null }),
       generateArtifact: async (kind) => {
