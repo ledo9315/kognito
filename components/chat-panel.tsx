@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
+import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport, type UIMessage } from 'ai'
 import { ArrowUp, Copy, NotebookPen, RotateCcw, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { useNotebookStore } from '@/components/notebook-store'
@@ -30,21 +32,72 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from '@/components/ui/message-scroller'
+import { clearChatAction } from '@/lib/chat-actions'
 import { suggestedQuestions } from '@/lib/data'
+import type { Citation } from '@/lib/db/schema'
+import type { MessageRow } from '@/lib/messages'
+
+function toUIMessage(row: MessageRow): UIMessage<{ citations: Citation[] }> {
+  return {
+    id: row.id,
+    role: row.role,
+    parts: [{ type: 'text', text: row.content }],
+    metadata: { citations: row.citations },
+  }
+}
+
+function extractMessageText(message: UIMessage) {
+  return message.parts
+    .map((part) => (part.type === 'text' ? part.text : ''))
+    .join('')
+}
+
+function getUserFriendlyErrorMessage(error: Error) {
+  try {
+    const parsed = JSON.parse(error.message)
+    if (typeof parsed?.error === 'string') return parsed.error
+  } catch {
+    // Not one of our own responses.
+  }
+  return 'Die Antwort konnte nicht geladen werden. Bitte versuche es noch einmal.'
+}
 
 export function ChatPanel() {
-  const { notebook, sources, messages, thinking, askQuestion, clearChat, openSource, addNote } =
-    useNotebookStore()
+  const { notebook, sources, history, openSource, addNote } = useNotebookStore()
   const [draft, setDraft] = useState('')
+  const [failure, setFailure] = useState<string | null>(null)
+  const [clearing, startClearing] = useTransition()
 
-  const selectedCount = sources.filter((source) => source.selected).length
+  const { messages, sendMessage, status, setMessages } = useChat<UIMessage<{ citations: Citation[] }>>(
+    {
+      messages: history.map(toUIMessage),
+      transport: new DefaultChatTransport({ api: '/api/chat' }),
+      onError: (error) => setFailure(getUserFriendlyErrorMessage(error)),
+    }
+  )
+
+  const selected = sources.filter((source) => source.selected)
+  const selectedCount = selected.length
+  const busy = status === 'submitted' || status === 'streaming'
   const isEmpty = messages.length === 0
 
-  async function send(question: string) {
+  const latest = messages.at(-1)
+  const waiting = busy && (latest?.role !== 'assistant' || extractMessageText(latest) === '')
+
+  function send(question: string) {
     const value = question.trim()
-    if (!value || thinking) return
+    if (!value || busy) return
     setDraft('')
-    await askQuestion(value)
+    setFailure(null)
+    void sendMessage(
+      { text: value },
+      {
+        body: {
+          notebookId: notebook.id,
+          sourceIds: selected.map((source) => source.id),
+        },
+      },
+    )
   }
 
   return (
@@ -60,7 +113,14 @@ export function ChatPanel() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => clearChat()}
+            disabled={busy || clearing}
+            onClick={() =>
+              startClearing(async () => {
+                await clearChatAction(notebook.id)
+                setMessages([])
+                setFailure(null)
+              })
+            }
           >
             <RotateCcw data-icon="inline-start" />
             Neu starten
@@ -111,70 +171,83 @@ export function ChatPanel() {
                     </MarkerContent>
                   </Marker>
 
-                  {messages.map((message) => (
-                    <MessageScrollerItem
-                      key={message.id}
-                      messageId={message.id}
-                      scrollAnchor={message.role === 'user'}
-                    >
-                      {message.role === 'user' ? (
-                        <Message align="end">
-                          <MessageContent>
-                            <Bubble align="end">
-                              <BubbleContent>{message.content}</BubbleContent>
-                            </Bubble>
-                          </MessageContent>
-                        </Message>
-                      ) : (
-                        <Message align="start">
-                          <MessageContent>
-                            <Bubble variant="ghost" align="start">
-                              <BubbleContent>
-                                <AnswerText
-                                  content={message.content}
-                                  citations={message.citations}
-                                  onCitationClick={(citation) =>
-                                    openSource(citation.sourceId)
-                                  }
-                                />
-                              </BubbleContent>
-                            </Bubble>
-                            <MessageFooter className="gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  navigator.clipboard?.writeText(
-                                    message.content,
-                                  )
-                                  toast.success('Antwort kopiert')
-                                }}
-                              >
-                                <Copy data-icon="inline-start" />
-                                Kopieren
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  addNote(
-                                    'Aus dem Chat gespeichert',
-                                    message.content,
-                                  )
-                                  toast.success('Als Notiz gespeichert')
-                                }}
-                              >
-                                <NotebookPen data-icon="inline-start" />
-                                Als Notiz
-                              </Button>
-                            </MessageFooter>
-                          </MessageContent>
-                        </Message>
-                      )}
-                    </MessageScrollerItem>
-                  ))}
+                  {messages.map((message) => {
+                    const content = extractMessageText(message)
 
-                  {thinking && (
+                    if (message.role === 'assistant' && !content) return null
+
+                    return (
+                      <MessageScrollerItem
+                        key={message.id}
+                        messageId={message.id}
+                        scrollAnchor={message.role === 'user'}
+                      >
+                        {message.role === 'user' ? (
+                          <Message align="end">
+                            <MessageContent>
+                              <Bubble align="end">
+                                <BubbleContent>{content}</BubbleContent>
+                              </Bubble>
+                            </MessageContent>
+                          </Message>
+                        ) : (
+                          <Message align="start">
+                            <MessageContent>
+                              <Bubble variant="ghost" align="start">
+                                <BubbleContent>
+                                  <AnswerText
+                                    content={content}
+                                    citations={message.metadata?.citations}
+                                    onCitationClick={(citation) =>
+                                      openSource(citation.sourceId)
+                                    }
+                                  />
+                                </BubbleContent>
+                              </Bubble>
+                              <MessageFooter className="gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    navigator.clipboard?.writeText(content)
+                                    toast.success('Antwort kopiert')
+                                  }}
+                                >
+                                  <Copy data-icon="inline-start" />
+                                  Kopieren
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    addNote('Aus dem Chat gespeichert', content)
+                                    toast.success('Als Notiz gespeichert')
+                                  }}
+                                >
+                                  <NotebookPen data-icon="inline-start" />
+                                  Als Notiz
+                                </Button>
+                              </MessageFooter>
+                            </MessageContent>
+                          </Message>
+                        )}
+                      </MessageScrollerItem>
+                    )
+                  })}
+
+                  {failure && (
+                    <MessageScrollerItem messageId="failure">
+                      <Message align="start">
+                        <MessageContent>
+                          <p role="alert" className="text-sm text-destructive">
+                            {failure}
+                          </p>
+                        </MessageContent>
+                      </Message>
+                    </MessageScrollerItem>
+                  )}
+
+                  {waiting && (
                     <MessageScrollerItem messageId="thinking">
                       <Message align="start">
                         <MessageContent>
@@ -248,7 +321,7 @@ export function ChatPanel() {
                   size="icon-sm"
                   variant="default"
                   className="ml-auto"
-                  disabled={!draft.trim() || thinking}
+                  disabled={!draft.trim() || busy}
                   aria-label="Frage senden"
                 >
                   <ArrowUp />

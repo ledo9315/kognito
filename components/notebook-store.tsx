@@ -1,12 +1,8 @@
 'use client'
 
 import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react'
-import {
-  simulateAnswer,
-  type ChatMessage,
-  type StudioArtifact,
-  type StudioArtifactKind,
-} from '@/lib/data'
+import type { StudioArtifact, StudioArtifactKind } from '@/lib/data'
+import type { MessageRow } from '@/lib/messages'
 import type { SourceItem } from '@/lib/sources'
 
 type Notebook = { id: string; title: string; emoji: string }
@@ -14,8 +10,6 @@ type Notebook = { id: string; title: string; emoji: string }
 type State = {
   selection: Record<string, boolean>
   openSourceId: string | null
-  thinking: boolean
-  messages: ChatMessage[]
   artifacts: StudioArtifact[]
   notes: { id: string; title: string; body: string; pinned: boolean }[]
 }
@@ -24,9 +18,6 @@ type Action =
   | { type: 'select'; sourceId: string; selected: boolean }
   | { type: 'select-all'; sourceIds: string[]; selected: boolean }
   | { type: 'open-source'; sourceId: string | null }
-  | { type: 'add-message'; message: ChatMessage }
-  | { type: 'clear-messages' }
-  | { type: 'set-thinking'; value: boolean }
   | { type: 'add-artifact'; artifact: StudioArtifact }
   | { type: 'remove-artifact'; artifactId: string }
   | { type: 'add-note'; title: string; body: string }
@@ -34,8 +25,6 @@ type Action =
 const emptyState: State = {
   selection: {},
   openSourceId: null,
-  thinking: false,
-  messages: [],
   artifacts: [],
   notes: [],
 }
@@ -54,12 +43,6 @@ function reducer(state: State, action: Action): State {
     }
     case 'open-source':
       return { ...state, openSourceId: action.sourceId }
-    case 'add-message':
-      return { ...state, messages: [...state.messages, action.message] }
-    case 'clear-messages':
-      return { ...state, messages: [] }
-    case 'set-thinking':
-      return { ...state, thinking: action.value }
     case 'add-artifact':
       return { ...state, artifacts: [action.artifact, ...state.artifacts] }
     case 'remove-artifact':
@@ -89,16 +72,14 @@ function uid(prefix: string) {
 type StoreValue = {
   notebook: Notebook
   sources: SourceItem[]
+  /** The stored conversation, as it was when the page was rendered. */
+  history: MessageRow[]
   openSourceId: string | null
-  thinking: boolean
-  messages: ChatMessage[]
   artifacts: StudioArtifact[]
   notes: State['notes']
   selectSource: (sourceId: string, selected: boolean) => void
   selectAllSources: (selected: boolean) => void
   openSource: (sourceId: string | null) => void
-  askQuestion: (question: string) => Promise<void>
-  clearChat: () => void
   generateArtifact: (kind: StudioArtifactKind) => Promise<StudioArtifact>
   removeArtifact: (artifactId: string) => void
   addNote: (title: string, body: string) => void
@@ -109,10 +90,12 @@ const StoreContext = createContext<StoreValue | null>(null)
 export function NotebookStoreProvider({
   notebook,
   sources,
+  history,
   children,
 }: {
   notebook: Notebook
   sources: SourceItem[]
+  history: MessageRow[]
   children: ReactNode
 }) {
   const [state, dispatch] = useReducer(reducer, emptyState)
@@ -130,9 +113,8 @@ export function NotebookStoreProvider({
     return {
       notebook,
       sources: merged,
+      history,
       openSourceId: state.openSourceId,
-      thinking: state.thinking,
-      messages: state.messages,
       artifacts: state.artifacts,
       notes: state.notes,
       selectSource: (sourceId, selected) =>
@@ -144,34 +126,6 @@ export function NotebookStoreProvider({
           selected,
         }),
       openSource: (sourceId) => dispatch({ type: 'open-source', sourceId }),
-      clearChat: () => dispatch({ type: 'clear-messages' }),
-      askQuestion: async (question) => {
-        dispatch({
-          type: 'add-message',
-          message: {
-            id: uid('message'),
-            role: 'user',
-            content: question,
-            createdAt: Date.now(),
-          },
-        })
-        dispatch({ type: 'set-thinking', value: true })
-
-        await new Promise((resolve) => setTimeout(resolve, 1400))
-
-        const { content, citations } = simulateAnswer(question, merged)
-        dispatch({
-          type: 'add-message',
-          message: {
-            id: uid('message'),
-            role: 'assistant',
-            content,
-            citations,
-            createdAt: Date.now(),
-          },
-        })
-        dispatch({ type: 'set-thinking', value: false })
-      },
       generateArtifact: async (kind) => {
         await new Promise((resolve) => setTimeout(resolve, 1600))
         const artifact: StudioArtifact = {
@@ -188,7 +142,7 @@ export function NotebookStoreProvider({
         dispatch({ type: 'remove-artifact', artifactId }),
       addNote: (title, body) => dispatch({ type: 'add-note', title, body }),
     }
-  }, [notebook, merged, state])
+  }, [notebook, merged, history, state])
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }
