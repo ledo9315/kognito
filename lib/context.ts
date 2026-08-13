@@ -74,7 +74,7 @@ const rules = `Du bist ein Rechercheassistent. Beantworte die Frage ausschließl
 Regeln:
 - Belege jede Aussage mit der Nummer des Abschnitts, aus dem sie stammt, in eckigen Klammern, zum Beispiel [2]. Mehrere Belege werden einzeln gesetzt: [1][3].
 - Verwende nur Nummern, die es unten wirklich gibt.
-- Steht die Antwort nicht in den Abschnitten, sage das ausdrücklich und rate nicht.
+- Steht die Antwort nicht in den Abschnitten, sage das ausdrücklich und rate nicht. Setze in diesem Fall keine Belegnummer, denn es gibt nichts zu belegen.
 - Widersprechen sich die Abschnitte, benenne den Widerspruch mit beiden Belegen.
 - Antworte auf Deutsch, sachlich und so knapp wie möglich.`
 
