@@ -1,6 +1,7 @@
 'use client'
 
 import { Fragment } from 'react'
+import { splitAnswer } from '@/lib/citations'
 import type { Citation } from '@/lib/db/schema'
 import {
   Tooltip,
@@ -73,35 +74,27 @@ function Inline({
   citations: Citation[]
   onCitationClick?: (citation: Citation) => void
 }) {
-  // Split at **bold** and [n]
-  const tokens = text.split(/(\*\*[^*]+\*\*|\[\d+\])/g).filter(Boolean)
-
   return (
     <>
-      {tokens.map((token, index) => {
-        if (token.startsWith('**') && token.endsWith('**')) {
-          return (
-            <strong key={index} className="font-medium text-foreground">
-              {token.slice(2, -2)}
-            </strong>
-          )
+      {splitAnswer(text, citations).map((segment, index) => {
+        switch (segment.type) {
+          case 'emphasis':
+            return (
+              <strong key={index} className="font-medium text-foreground">
+                {segment.text}
+              </strong>
+            )
+          case 'citation':
+            return (
+              <CitationChip
+                key={index}
+                citation={segment.citation}
+                onClick={onCitationClick}
+              />
+            )
+          default:
+            return <span key={index}>{segment.text}</span>
         }
-
-        const citationMatch = token.match(/^\[(\d+)\]$/)
-        if (citationMatch) {
-          const number = Number(citationMatch[1])
-          const citation = citations.find((candidate) => candidate.index === number)
-          if (!citation) return <span key={index}>{token}</span>
-          return (
-            <CitationChip
-              key={index}
-              citation={citation}
-              onClick={onCitationClick}
-            />
-          )
-        }
-
-        return <span key={index}>{token}</span>
       })}
     </>
   )

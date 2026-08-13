@@ -1,7 +1,15 @@
-import { createUIMessageStreamResponse, toUIMessageStream } from 'ai'
+import {
+  createUIMessageStreamResponse,
+  toUIMessageStream,
+  type ToolSet,
+  type UIMessage,
+} from 'ai'
 import { z } from 'zod'
 import { ChatError, streamAnswer } from '@/lib/chat'
+import type { Citation } from '@/lib/db/schema'
 import { getSession } from '@/lib/session'
+
+type ChatMessage = UIMessage<{ citations: Citation[] }>
 
 /** A long answer over many sources can take a while. */
 export const maxDuration = 60
@@ -49,7 +57,7 @@ const conversationMessages = parsed.data.messages
   }
 
   try {
-    const { result } = await streamAnswer({
+    const { result, citations } = await streamAnswer({
       notebookId: parsed.data.notebookId,
       ownerId: session.user.id,
       question: question.content,
@@ -58,10 +66,12 @@ const conversationMessages = parsed.data.messages
     })
 
     return createUIMessageStreamResponse({
-      stream: toUIMessageStream({
+      stream: toUIMessageStream<ToolSet, ChatMessage>({
         stream: result.stream,
         onError: () =>
           'Das Modell hat nicht geantwortet. Bitte versuche es noch einmal.',
+        messageMetadata: ({ part }) =>
+          part.type === 'start' ? { citations } : undefined,
       }),
     })
   } catch (error) {

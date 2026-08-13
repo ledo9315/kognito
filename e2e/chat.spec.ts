@@ -7,10 +7,10 @@ import { createNotebook } from './helpers'
  * real streamed response without the run needing a gateway key or costing
  * anything.
  */
-async function answerWith(page: Page, words: string[]) {
+async function answerWith(page: Page, words: string[], citations: unknown[] = []) {
   await page.route('**/api/chat', async (route) => {
     const chunks = [
-      { type: 'start' },
+      { type: 'start', messageMetadata: { citations } },
       { type: 'text-start', id: '0' },
       ...words.map((delta) => ({ type: 'text-delta', id: '0', delta })),
       { type: 'text-end', id: '0' },
@@ -52,6 +52,36 @@ test('an answer arrives and is written into the chat', async ({ page }) => {
   await expect(page.getByText('Der Termin ist der 17. März.').first()).toBeVisible({
     timeout: 15_000,
   })
+})
+
+test('a citation becomes a chip, an invented number stays text', async ({
+  page,
+}) => {
+  await createNotebook(page, `Beleg ${Date.now()}`)
+  await addTextSource(page, 'Der nächste Termin ist der 17. März.')
+  await answerWith(
+    page,
+    ['Der Termin steht [1], der Rest nicht [9].'],
+    [
+      {
+        index: 1,
+        chunkId: 'chunk-1',
+        sourceId: 'source-1',
+        quote: 'Der nächste Termin ist der 17. März.',
+      },
+    ],
+  )
+
+  await page.getByRole('textbox', { name: 'Frage eingeben' }).fill('Wann?')
+  await page.getByRole('button', { name: 'Frage senden' }).click()
+
+  const chat = page.getByRole('main')
+  await expect(chat.getByRole('button', { name: 'Beleg 1 anzeigen' })).toBeVisible({
+    timeout: 15_000,
+  })
+  // Nothing to point at, so it is left where the model put it.
+  await expect(chat.getByText('[9]')).toBeVisible()
+  await expect(chat.getByRole('button', { name: 'Beleg 9 anzeigen' })).toHaveCount(0)
 })
 
 test('the question is sent with the selected sources', async ({ page }) => {
