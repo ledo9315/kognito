@@ -130,6 +130,7 @@ export function AddSourceDialog({
                     id="source-text"
                     name="text"
                     rows={6}
+                    className="max-h-64 overflow-y-auto"
                     placeholder="Notizen, Auszüge oder Transkripte…"
                   />
                 </Field>

@@ -9,6 +9,38 @@ export function defaultModel() {
   return process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5-mini'
 }
 
+export function modelFailureMessage(error: unknown) {
+  return looksRateLimited(error)
+    ? 'Das Modell ist gerade ausgelastet oder das Limit ist erreicht. Bitte versuche es in ein paar Minuten noch einmal.'
+    : 'Das Modell hat nicht geantwortet. Bitte versuche es noch einmal.'
+}
+
+function looksRateLimited(error: unknown, depth = 0): boolean {
+  if (depth > 4 || error === null || typeof error !== 'object') return false
+
+  const candidate = error as {
+    name?: unknown
+    message?: unknown
+    statusCode?: unknown
+    cause?: unknown
+    lastError?: unknown
+    errors?: unknown
+  }
+
+  if (candidate.statusCode === 429) return true
+
+  const text = `${String(candidate.name ?? '')} ${String(candidate.message ?? '')}`
+  if (/rate.?limit|too many requests|\b429\b/i.test(text)) return true
+
+  if (looksRateLimited(candidate.cause, depth + 1)) return true
+  if (looksRateLimited(candidate.lastError, depth + 1)) return true
+
+  return (
+    Array.isArray(candidate.errors) &&
+    candidate.errors.some((one) => looksRateLimited(one, depth + 1))
+  )
+}
+
 export class ChatError extends Error {
   constructor(
     readonly code: 'unknown-notebook' | 'no-sources',

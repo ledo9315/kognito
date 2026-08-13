@@ -5,7 +5,7 @@ import {
   type UIMessage,
 } from 'ai'
 import { z } from 'zod'
-import { ChatError, streamAnswer } from '@/lib/chat'
+import { ChatError, modelFailureMessage, streamAnswer } from '@/lib/chat'
 import type { Citation } from '@/lib/db/schema'
 import { getSession } from '@/lib/session'
 
@@ -68,8 +68,8 @@ const conversationMessages = parsed.data.messages
     return createUIMessageStreamResponse({
       stream: toUIMessageStream<ToolSet, ChatMessage>({
         stream: result.stream,
-        onError: () =>
-          'Das Modell hat nicht geantwortet. Bitte versuche es noch einmal.',
+        onError: (error) =>
+          JSON.stringify({ error: modelFailureMessage(error) }),
         messageMetadata: ({ part }) =>
           part.type === 'start' ? { citations } : undefined,
       }),
