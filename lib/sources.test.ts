@@ -2,8 +2,15 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createTestDb } from '@/lib/db/test-db'
 import { chunk, user } from '@/lib/db/schema'
+import { buildPrompt, getContextChunks } from '@/lib/context'
 import { createNotebook } from '@/lib/notebooks'
-import { createSource, deleteSource, listSources } from '@/lib/sources'
+import {
+  createSource,
+  deleteSource,
+  listSources,
+  setAllSourcesSelected,
+  setSourceSelected,
+} from '@/lib/sources'
 
 let database: Awaited<ReturnType<typeof createTestDb>>
 
@@ -87,6 +94,151 @@ describe('storing a source', () => {
     )
 
     expect(created?.chunkCount).toBe(1)
+  })
+})
+
+describe('the selection', () => {
+  it('is on for a freshly stored source', async () => {
+    const { ownerId, notebookId } = await setUp('alice')
+    await createSource(
+      { notebookId, ownerId, title: 'Neu', kind: 'text', text: 'Text' },
+      database.db,
+    )
+
+    const [stored] = await listSources(notebookId, ownerId, database.db)
+    expect(stored.selected).toBe(true)
+  })
+
+  it('survives, because it is written to the database', async () => {
+    const { ownerId, notebookId } = await setUp('alice')
+    const created = await createSource(
+      { notebookId, ownerId, title: 'Abgewählt', kind: 'text', text: 'Text' },
+      database.db,
+    )
+
+    expect(
+      await setSourceSelected(created!.id, ownerId, false, database.db),
+    ).toBe(true)
+
+    // Read back the way the page reads it, not through the browser state.
+    const [stored] = await listSources(notebookId, ownerId, database.db)
+    expect(stored.selected).toBe(false)
+  })
+
+  it('switches every source of one notebook at once', async () => {
+    const { ownerId, notebookId } = await setUp('alice')
+    for (const title of ['Eins', 'Zwei', 'Drei']) {
+      await createSource(
+        { notebookId, ownerId, title, kind: 'text', text: 'Text' },
+        database.db,
+      )
+    }
+
+    expect(
+      await setAllSourcesSelected(notebookId, ownerId, false, database.db),
+    ).toBe(true)
+
+    const stored = await listSources(notebookId, ownerId, database.db)
+    expect(stored.map((one) => one.selected)).toEqual([false, false, false])
+  })
+
+  it('leaves the sources of another notebook alone', async () => {
+    const alice = await setUp('alice')
+    const second = await createNotebook('alice', 'Zweites', database.db)
+    await createSource(
+      { ...alice, title: 'Hier', kind: 'text', text: 'Text' },
+      database.db,
+    )
+    await createSource(
+      {
+        notebookId: second.id,
+        ownerId: 'alice',
+        title: 'Dort',
+        kind: 'text',
+        text: 'Text',
+      },
+      database.db,
+    )
+
+    await setAllSourcesSelected(alice.notebookId, 'alice', false, database.db)
+
+    const [untouched] = await listSources(second.id, 'alice', database.db)
+    expect(untouched.selected).toBe(true)
+  })
+
+  it('refuses a source of another account', async () => {
+    const alice = await setUp('alice')
+    const bob = await setUp('bob')
+    const created = await createSource(
+      { ...alice, title: 'Privat', kind: 'text', text: 'Text' },
+      database.db,
+    )
+
+    expect(
+      await setSourceSelected(created!.id, bob.ownerId, false, database.db),
+    ).toBe(false)
+
+    const [stored] = await listSources(alice.notebookId, alice.ownerId, database.db)
+    expect(stored.selected).toBe(true)
+  })
+
+  it('refuses a notebook of another account', async () => {
+    const alice = await setUp('alice')
+    const bob = await setUp('bob')
+    await createSource(
+      { ...alice, title: 'Privat', kind: 'text', text: 'Text' },
+      database.db,
+    )
+
+    expect(
+      await setAllSourcesSelected(
+        alice.notebookId,
+        bob.ownerId,
+        false,
+        database.db,
+      ),
+    ).toBe(false)
+
+    const [stored] = await listSources(alice.notebookId, alice.ownerId, database.db)
+    expect(stored.selected).toBe(true)
+  })
+})
+
+describe('the selection and the prompt', () => {
+  it('keeps a deselected source out of the prompt', async () => {
+    const { ownerId, notebookId } = await setUp('alice')
+    const wanted = await createSource(
+      { notebookId, ownerId, title: 'Gewollt', kind: 'text', text: longText },
+      database.db,
+    )
+    const dropped = await createSource(
+      {
+        notebookId,
+        ownerId,
+        title: 'Abgewählt',
+        kind: 'text',
+        text: 'Diese Aussage darf nicht im Prompt landen.',
+      },
+      database.db,
+    )
+
+    await setSourceSelected(dropped!.id, ownerId, false, database.db)
+
+    // Exactly what the chat sends: the sources that are still checked.
+    const selected = (await listSources(notebookId, ownerId, database.db))
+      .filter((one) => one.selected)
+      .map((one) => one.id)
+
+    expect(selected).toEqual([wanted!.id])
+
+    const chunks = await getContextChunks(
+      { sourceIds: selected, question: 'Worum geht es?', ownerId },
+      database.db,
+    )
+    const built = buildPrompt('Worum geht es?', chunks)
+
+    expect(built.user).not.toContain('darf nicht im Prompt landen')
+    expect(built.user).toContain('Gewollt')
   })
 })
 

@@ -10,7 +10,12 @@ import {
   type Extraction,
 } from '@/lib/extract'
 import { requireOwnerId } from '@/lib/session'
-import { createSource, deleteSource } from '@/lib/sources'
+import {
+  createSource,
+  deleteSource,
+  setAllSourcesSelected,
+  setSourceSelected,
+} from '@/lib/sources'
 import { isYoutubeUrl, sourceHostLabel } from '@/lib/source-url'
 
 export type SourceFormState = { error: string } | null
@@ -125,6 +130,28 @@ export async function deleteSourceAction(formData: FormData) {
 
   await deleteSource(sourceId.data, await requireOwnerId())
   revalidatePath(`/notebook/${notebookId.data}`)
+}
+
+/**
+ * Both selection actions deliberately skip `revalidatePath`. The browser
+ * already shows the new state, and re-rendering the whole notebook page on
+ * every click would drag the chat history along for nothing.
+ */
+export async function selectSourceAction(sourceId: string, selected: boolean) {
+  const parsed = z.uuid().safeParse(sourceId)
+  if (!parsed.success) return false
+
+  return setSourceSelected(parsed.data, await requireOwnerId(), selected)
+}
+
+export async function selectAllSourcesAction(
+  notebookId: string,
+  selected: boolean,
+) {
+  const parsed = z.uuid().safeParse(notebookId)
+  if (!parsed.success) return false
+
+  return setAllSourcesSelected(parsed.data, await requireOwnerId(), selected)
 }
 
 function firstLine(text: string) {
