@@ -1,8 +1,13 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
-import { createNotebook } from '@/lib/notebooks'
+import {
+  createNotebook,
+  deleteNotebook,
+  renameNotebook,
+} from '@/lib/notebooks'
 import { requireOwnerId } from '@/lib/session'
 
 export type NotebookFormState = { error: string } | null
@@ -25,4 +30,37 @@ export async function createNotebookAction(
   const created = await createNotebook(await requireOwnerId(), parsed.data)
 
   redirect(`/notebook/${created.id}`)
+}
+
+export async function renameNotebookAction(
+  notebookId: string,
+  title: string,
+): Promise<NotebookFormState> {
+  const id = z.uuid().safeParse(notebookId)
+  if (!id.success) return { error: 'Unbekanntes Notizbuch.' }
+
+  const parsed = Title.safeParse(title)
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
+
+  const renamed = await renameNotebook(
+    id.data,
+    await requireOwnerId(),
+    parsed.data,
+  )
+  if (!renamed) return { error: 'Unbekanntes Notizbuch.' }
+
+  revalidatePath('/')
+  revalidatePath(`/notebook/${id.data}`)
+  return null
+}
+
+export async function deleteNotebookAction(notebookId: string) {
+  const id = z.uuid().safeParse(notebookId)
+  if (!id.success) return { error: 'Unbekanntes Notizbuch.' }
+
+  const deleted = await deleteNotebook(id.data, await requireOwnerId())
+  if (!deleted) return { error: 'Unbekanntes Notizbuch.' }
+
+  revalidatePath('/')
+  redirect('/')
 }

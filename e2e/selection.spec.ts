@@ -1,20 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { createNotebook } from './helpers'
-
-/**
- * The check mark reacts at once and the server action follows, so a reload
- * right after the click can beat the write. Waiting for the response is the
- * deterministic version of hoping.
- */
-async function storedAfter(page: Page, click: Promise<void>) {
-  const stored = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'POST' &&
-      response.url().includes('/notebook/'),
-  )
-  await click
-  await stored
-}
+import { createNotebook, storedAfter } from './helpers'
 
 async function addTextSource(page: Page, text: string, expectCount: string) {
   await page.locator('[data-slot="dialog-trigger"]').first().click()
