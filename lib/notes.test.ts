@@ -1,8 +1,21 @@
+import { asc, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createTestDb } from '@/lib/db/test-db'
-import { note, user } from '@/lib/db/schema'
-import { createNotebook, deleteNotebook } from '@/lib/notebooks'
-import { createNote, deleteNote, listNotes, updateNote } from '@/lib/notes'
+import { chunk, user } from '@/lib/db/schema'
+import { buildPrompt, getContextChunks } from '@/lib/context'
+import { createNotebook } from '@/lib/notebooks'
+import {
+  createSource,
+  deleteSource,
+  listSources,
+  replaceSourceText,
+} from '@/lib/sources'
+
+/**
+ * A note is a source of kind `note`. These tests cover what is special about
+ * it: that it reaches the prompt like any other source, and that editing it
+ * rewrites the chunks instead of leaving stale offsets behind.
+ */
 
 let database: Awaited<ReturnType<typeof createTestDb>>
 
@@ -14,139 +27,170 @@ afterEach(async () => {
   await database.close()
 })
 
-async function createUser(id: string) {
+async function setUp(name: string) {
   await database.db
     .insert(user)
-    .values({ id, name: id, email: `${id}@kognito.test` })
-  return id
+    .values({ id: name, name, email: `${name}@kognito.test` })
+  const notebook = await createNotebook(name, `${name} Notizbuch`, database.db)
+  return { ownerId: name, notebookId: notebook.id }
 }
 
-describe('owner scoping', () => {
-  it('lists only the notes of a notebook of the given owner', async () => {
-    const alice = await createUser('alice')
-    const bob = await createUser('bob')
-    const hers = await createNotebook(alice, 'Ihres', database.db)
-    const his = await createNotebook(bob, 'Seins', database.db)
+function writeNote(
+  where: { notebookId: string; ownerId: string },
+  title: string,
+  text: string,
+) {
+  return createSource({ ...where, title, kind: 'note', text }, database.db)
+}
 
-    await createNote(
-      { notebookId: hers.id, ownerId: alice, title: 'Ihre Notiz', body: 'Text' },
-      database.db,
-    )
-    await createNote(
-      { notebookId: his.id, ownerId: bob, title: 'Seine Notiz', body: 'Text' },
-      database.db,
-    )
+const chunksOf = (sourceId: string) =>
+  database.db
+    .select()
+    .from(chunk)
+    .where(eq(chunk.sourceId, sourceId))
+    .orderBy(asc(chunk.index))
 
-    expect(
-      (await listNotes(hers.id, alice, database.db)).map((row) => row.title),
-    ).toEqual(['Ihre Notiz'])
-    expect(await listNotes(hers.id, bob, database.db)).toEqual([])
+describe('a note as a source', () => {
+  it('is stored with its kind and is selected right away', async () => {
+    const where = await setUp('alice')
+
+    await writeNote(where, 'Erkenntnis', 'Die Persistenzschicht ist entschieden.')
+
+    const [stored] = await listSources(where.notebookId, where.ownerId, database.db)
+    expect(stored.kind).toBe('note')
+    expect(stored.status).toBe('ready')
+    expect(stored.selected).toBe(true)
   })
 
-  it('refuses to write a note into a notebook of another owner', async () => {
-    const alice = await createUser('alice')
-    const bob = await createUser('bob')
-    const hers = await createNotebook(alice, 'Ihres', database.db)
+  it('answers a question like any other source', async () => {
+    const where = await setUp('alice')
 
-    expect(
-      await createNote(
-        { notebookId: hers.id, ownerId: bob, title: 'Fremd', body: 'Text' },
-        database.db,
-      ),
-    ).toBeNull()
-    expect(await database.db.select().from(note)).toEqual([])
-  })
-
-  it('refuses to edit or delete a note of another owner', async () => {
-    const alice = await createUser('alice')
-    const bob = await createUser('bob')
-    const hers = await createNotebook(alice, 'Ihres', database.db)
-    const stored = await createNote(
-      { notebookId: hers.id, ownerId: alice, title: 'Privat', body: 'Text' },
-      database.db,
+    const note = await writeNote(
+      where,
+      'Erkenntnis',
+      'Als Datenbank wurde Neon Postgres gewählt.',
     )
 
-    expect(
-      await updateNote(
-        stored!.id,
-        bob,
-        { title: 'Gekapert', body: 'Text' },
-        database.db,
-      ),
-    ).toBe(false)
-    expect(await deleteNote(stored!.id, bob, database.db)).toBe(false)
+    const chunks = await getContextChunks(
+      {
+        sourceIds: [note!.id],
+        question: 'Welche Datenbank?',
+        ownerId: where.ownerId,
+      },
+      database.db,
+    )
+    const prompt = buildPrompt('Welche Datenbank?', chunks)
 
-    const stillThere = await listNotes(hers.id, alice, database.db)
-    expect(stillThere.map((row) => row.title)).toEqual(['Privat'])
+    expect(prompt.user).toContain('Neon Postgres')
+    expect(prompt.chunks[0].sourceTitle).toBe('Erkenntnis')
   })
 })
 
-describe('writing notes', () => {
-  it('creates, edits and deletes for the actual owner', async () => {
-    const alice = await createUser('alice')
-    const hers = await createNotebook(alice, 'Ihres', database.db)
-
-    const stored = await createNote(
-      { notebookId: hers.id, ownerId: alice, title: 'Entwurf', body: 'Erste Fassung' },
-      database.db,
-    )
-    expect(stored).not.toBeNull()
+describe('editing a note', () => {
+  it('replaces title, text and chunks', async () => {
+    const where = await setUp('alice')
+    const note = await writeNote(where, 'Entwurf', 'Erste Fassung.')
+    const before = await chunksOf(note!.id)
 
     expect(
-      await updateNote(
-        stored!.id,
-        alice,
-        { title: 'Endfassung', body: 'Zweite Fassung' },
+      await replaceSourceText(
+        note!.id,
+        where.ownerId,
+        { title: 'Endfassung', text: 'Zweite Fassung, deutlich anders.' },
         database.db,
       ),
     ).toBe(true)
 
-    const [edited] = await listNotes(hers.id, alice, database.db)
-    expect(edited.title).toBe('Endfassung')
-    expect(edited.body).toBe('Zweite Fassung')
+    const [stored] = await listSources(where.notebookId, where.ownerId, database.db)
+    expect(stored.title).toBe('Endfassung')
+    expect(stored.content).toBe('Zweite Fassung, deutlich anders.')
 
-    expect(await deleteNote(stored!.id, alice, database.db)).toBe(true)
-    expect(await listNotes(hers.id, alice, database.db)).toEqual([])
-  })
-
-  it('puts the newest note first', async () => {
-    const alice = await createUser('alice')
-    const hers = await createNotebook(alice, 'Ihres', database.db)
-
-    // Written directly, because two inserts in the same test share a
-    // timestamp down to the microsecond often enough to make this flaky.
-    await database.db.insert(note).values([
-      {
-        id: 'older',
-        notebookId: hers.id,
-        title: 'Älter',
-        body: 'Text',
-        createdAt: new Date('2026-01-01'),
-      },
-      {
-        id: 'newer',
-        notebookId: hers.id,
-        title: 'Neuer',
-        body: 'Text',
-        createdAt: new Date('2026-06-01'),
-      },
+    // The old chunks are gone, not merely joined by new ones. A citation into
+    // the first version would otherwise point into text that no longer exists.
+    const after = await chunksOf(note!.id)
+    expect(after.map((piece) => piece.text)).toEqual([
+      'Zweite Fassung, deutlich anders.',
     ])
-
-    expect(
-      (await listNotes(hers.id, alice, database.db)).map((row) => row.id),
-    ).toEqual(['newer', 'older'])
+    expect(after.map((piece) => piece.id)).not.toEqual(
+      before.map((piece) => piece.id),
+    )
   })
 
-  it('goes away with the notebook it belongs to', async () => {
-    const alice = await createUser('alice')
-    const hers = await createNotebook(alice, 'Weg damit', database.db)
-    await createNote(
-      { notebookId: hers.id, ownerId: alice, title: 'Notiz', body: 'Text' },
+  it('keeps the offsets pointing into the new text', async () => {
+    const where = await setUp('alice')
+    const note = await writeNote(where, 'Notiz', 'Kurz.')
+    const longer = 'Ein Satz, der lang genug ist, um Abschnitte zu füllen. '.repeat(40)
+
+    await replaceSourceText(
+      note!.id,
+      where.ownerId,
+      { title: 'Notiz', text: longer },
       database.db,
     )
 
-    await deleteNotebook(hers.id, alice, database.db)
+    const pieces = await chunksOf(note!.id)
+    expect(pieces.length).toBeGreaterThan(1)
+    for (const piece of pieces) {
+      expect(longer.slice(piece.charStart, piece.charEnd)).toBe(piece.text)
+    }
+  })
 
-    expect(await database.db.select().from(note)).toEqual([])
+  it('reaches the next question with the new text', async () => {
+    const where = await setUp('alice')
+    const note = await writeNote(where, 'Notiz', 'Als Datenbank dient MySQL.')
+
+    await replaceSourceText(
+      note!.id,
+      where.ownerId,
+      { title: 'Notiz', text: 'Als Datenbank dient Neon Postgres.' },
+      database.db,
+    )
+
+    const chunks = await getContextChunks(
+      {
+        sourceIds: [note!.id],
+        question: 'Welche Datenbank?',
+        ownerId: where.ownerId,
+      },
+      database.db,
+    )
+
+    expect(chunks.map((piece) => piece.text).join(' ')).toContain('Neon Postgres')
+    expect(chunks.map((piece) => piece.text).join(' ')).not.toContain('MySQL')
+  })
+})
+
+describe('owner scoping', () => {
+  it('refuses to write a note into a notebook of another account', async () => {
+    const hers = await setUp('alice')
+    await setUp('bob')
+
+    expect(
+      await writeNote(
+        { notebookId: hers.notebookId, ownerId: 'bob' },
+        'Fremd',
+        'Text',
+      ),
+    ).toBeNull()
+  })
+
+  it('refuses to edit or delete a note of another account', async () => {
+    const hers = await setUp('alice')
+    await setUp('bob')
+    const note = await writeNote(hers, 'Privat', 'Erste Fassung.')
+
+    expect(
+      await replaceSourceText(
+        note!.id,
+        'bob',
+        { title: 'Gekapert', text: 'Fremder Text.' },
+        database.db,
+      ),
+    ).toBe(false)
+    expect(await deleteSource(note!.id, 'bob', database.db)).toBe(false)
+
+    const [stored] = await listSources(hers.notebookId, hers.ownerId, database.db)
+    expect(stored.title).toBe('Privat')
+    expect(stored.content).toBe('Erste Fassung.')
   })
 })

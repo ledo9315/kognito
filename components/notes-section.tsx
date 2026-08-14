@@ -96,7 +96,7 @@ export function NotesSection() {
               <ItemContent>
                 <ItemTitle>{note.title}</ItemTitle>
                 <ItemDescription className="line-clamp-2">
-                  {note.body}
+                  {note.content}
                 </ItemDescription>
               </ItemContent>
               <ItemActions>
@@ -105,7 +105,11 @@ export function NotesSection() {
                   size="icon-sm"
                   disabled={pending}
                   onClick={() =>
-                    setDraft({ id: note.id, title: note.title, body: note.body })
+                    setDraft({
+                      id: note.id,
+                      title: note.title,
+                      body: note.content ?? '',
+                    })
                   }
                   aria-label={`${note.title} bearbeiten`}
                 >

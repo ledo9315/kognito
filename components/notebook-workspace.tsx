@@ -18,7 +18,6 @@ import { Badge } from '@/components/ui/badge'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { MessageRow } from '@/lib/messages'
 import type { NotebookRow } from '@/lib/notebooks'
-import type { NoteRow } from '@/lib/notes'
 import type { SourceItem } from '@/lib/sources'
 import { cn } from '@/lib/utils'
 
@@ -28,12 +27,10 @@ export function NotebookWorkspace({
   notebook,
   sources,
   history,
-  notes,
 }: {
   notebook: NotebookRow
   sources: SourceItem[]
   history: MessageRow[]
-  notes: NoteRow[]
 }) {
   return (
     <NotebookStoreProvider
@@ -45,7 +42,6 @@ export function NotebookWorkspace({
       }}
       sources={sources}
       history={history}
-      notes={notes}
     >
       <Workspace />
     </NotebookStoreProvider>

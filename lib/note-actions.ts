@@ -2,8 +2,14 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { createNote, deleteNote, updateNote } from '@/lib/notes'
 import { requireOwnerId } from '@/lib/session'
+import { createSource, deleteSource, replaceSourceText } from '@/lib/sources'
+
+/**
+ * A note is a source of kind `note`, written in the app instead of uploaded.
+ * That is what makes it answerable in the chat: selection, chunking, search
+ * and citations all come from the source it already is.
+ */
 
 export type NoteFormState = { error: string } | null
 
@@ -34,10 +40,12 @@ export async function createNoteAction(
   const fields = Fields.safeParse({ title, body })
   if (!fields.success) return { error: fields.error.issues[0].message }
 
-  const created = await createNote({
+  const created = await createSource({
     notebookId: id.data,
     ownerId: await requireOwnerId(),
-    ...fields.data,
+    title: fields.data.title,
+    kind: 'note',
+    text: fields.data.body,
   })
   if (!created) return { error: 'Unbekanntes Notizbuch.' }
 
@@ -57,7 +65,12 @@ export async function updateNoteAction(
   const fields = Fields.safeParse({ title, body })
   if (!fields.success) return { error: fields.error.issues[0].message }
 
-  const updated = await updateNote(noteId, await requireOwnerId(), fields.data)
+  // Rewrites the chunks as well, so the next question reads the new text
+  // and a citation does not point into a passage that is gone.
+  const updated = await replaceSourceText(noteId, await requireOwnerId(), {
+    title: fields.data.title,
+    text: fields.data.body,
+  })
   if (!updated) return unknownNote
 
   revalidatePath(`/notebook/${notebookId}`)
@@ -71,7 +84,7 @@ export async function deleteNoteAction(
   const ids = z.uuid().array().safeParse([notebookId, noteId])
   if (!ids.success) return unknownNote
 
-  const deleted = await deleteNote(noteId, await requireOwnerId())
+  const deleted = await deleteSource(noteId, await requireOwnerId())
   if (!deleted) return unknownNote
 
   revalidatePath(`/notebook/${notebookId}`)

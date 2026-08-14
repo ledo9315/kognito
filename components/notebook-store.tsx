@@ -14,7 +14,6 @@ import {
   selectSourceAction,
 } from '@/lib/source-actions'
 import type { MessageRow } from '@/lib/messages'
-import type { NoteRow } from '@/lib/notes'
 import type { SourceItem } from '@/lib/sources'
 
 type Notebook = { id: string; title: string; emoji: string }
@@ -97,8 +96,8 @@ type StoreValue = {
   /** Set when the reader was opened from a citation, null otherwise. */
   passage: Passage | null
   artifacts: StudioArtifact[]
-  /** Stored notes, as they were when the page was rendered. */
-  notes: NoteRow[]
+  /** The sources of kind `note`, the ones written here instead of uploaded. */
+  notes: SourceItem[]
   selectSource: (sourceId: string, selected: boolean) => void
   selectAllSources: (selected: boolean) => void
   openSource: (sourceId: string | null, passage?: Passage) => void
@@ -117,13 +116,11 @@ export function NotebookStoreProvider({
   notebook,
   sources,
   history,
-  notes,
   children,
 }: {
   notebook: Notebook
   sources: SourceItem[]
   history: MessageRow[]
-  notes: NoteRow[]
   children: ReactNode
 }) {
   const [state, dispatch] = useReducer(reducer, emptyState)
@@ -145,7 +142,7 @@ export function NotebookStoreProvider({
       openSourceId: state.openSourceId,
       passage: state.passage,
       artifacts: state.artifacts,
-      notes,
+      notes: merged.filter((source) => source.kind === 'note'),
       // The check mark reacts at once and the write follows. If the write
       // fails the mark goes back, because a mark that lies decides which
       // sources answer the next question.
@@ -185,7 +182,7 @@ export function NotebookStoreProvider({
       editNote: (noteId, title, body) => updateNoteAction(notebook.id, noteId, title, body),
       removeNote: (noteId) => deleteNoteAction(notebook.id, noteId),
     }
-  }, [notebook, merged, history, notes, state])
+  }, [notebook, merged, history, state])
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }

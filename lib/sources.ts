@@ -93,6 +93,50 @@ export async function createSource(
   return { id, chunkCount: pieces.length }
 }
 
+/**
+ * Replaces the text of a source and cuts it again.
+ *
+ * The chunks carry offsets into `content`, so leaving the old ones in place
+ * would point citations at positions that no longer exist. They are deleted
+ * and written anew, which is also why this is not a plain update.
+ *
+ * Returns false when the source does not exist or belongs to someone else.
+ */
+export async function replaceSourceText(
+  id: string,
+  ownerId: string,
+  fields: { title: string; text: string },
+  db: Database = getDb(),
+) {
+  const owned = await db
+    .select({ id: source.id })
+    .from(source)
+    .innerJoin(notebook, eq(notebook.id, source.notebookId))
+    .where(and(eq(source.id, id), eq(notebook.ownerId, ownerId)))
+
+  if (owned.length === 0) return false
+
+  await db
+    .update(source)
+    .set({ title: fields.title, content: fields.text })
+    .where(eq(source.id, id))
+
+  await db.delete(chunk).where(eq(chunk.sourceId, id))
+
+  const pieces = chunkText(fields.text).map((piece, index) => ({
+    id: crypto.randomUUID(),
+    sourceId: id,
+    index,
+    text: piece.text,
+    charStart: piece.charStart,
+    charEnd: piece.charEnd,
+  }))
+
+  if (pieces.length > 0) await db.insert(chunk).values(pieces)
+
+  return true
+}
+
 export async function setSourceSelected(
   id: string,
   ownerId: string,
