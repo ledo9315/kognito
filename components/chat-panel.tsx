@@ -67,6 +67,7 @@ export function ChatPanel() {
   const [draft, setDraft] = useState('')
   const [failure, setFailure] = useState<string | null>(null)
   const [clearing, startClearing] = useTransition()
+  const [saving, startSaving] = useTransition()
 
   const { messages, sendMessage, status, setMessages } = useChat<UIMessage<{ citations: Citation[] }>>(
     {
@@ -224,10 +225,20 @@ export function ChatPanel() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => {
-                                    addNote('Aus dem Chat gespeichert', content)
-                                    toast.success('Als Notiz gespeichert')
-                                  }}
+                                  disabled={saving}
+                                  onClick={() =>
+                                    startSaving(async () => {
+                                      const result = await addNote(
+                                        'Aus dem Chat gespeichert',
+                                        content,
+                                      )
+                                      if (result) {
+                                        toast.error(result.error)
+                                        return
+                                      }
+                                      toast.success('Als Notiz gespeichert')
+                                    })
+                                  }
                                 >
                                   <NotebookPen data-icon="inline-start" />
                                   Als Notiz

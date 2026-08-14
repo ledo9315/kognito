@@ -4,10 +4,17 @@ import { createContext, useContext, useMemo, useReducer, type ReactNode } from '
 import { toast } from 'sonner'
 import type { StudioArtifact, StudioArtifactKind } from '@/lib/data'
 import {
+  createNoteAction,
+  deleteNoteAction,
+  updateNoteAction,
+  type NoteFormState,
+} from '@/lib/note-actions'
+import {
   selectAllSourcesAction,
   selectSourceAction,
 } from '@/lib/source-actions'
 import type { MessageRow } from '@/lib/messages'
+import type { NoteRow } from '@/lib/notes'
 import type { SourceItem } from '@/lib/sources'
 
 type Notebook = { id: string; title: string; emoji: string }
@@ -19,7 +26,6 @@ type State = {
   openSourceId: string | null
   passage: Passage | null
   artifacts: StudioArtifact[]
-  notes: { id: string; title: string; body: string; pinned: boolean }[]
 }
 
 type Action =
@@ -28,14 +34,12 @@ type Action =
   | { type: 'open-source'; sourceId: string | null; passage: Passage | null }
   | { type: 'add-artifact'; artifact: StudioArtifact }
   | { type: 'remove-artifact'; artifactId: string }
-  | { type: 'add-note'; title: string; body: string }
 
 const emptyState: State = {
   selection: {},
   openSourceId: null,
   passage: null,
   artifacts: [],
-  notes: [],
 }
 
 function reducer(state: State, action: Action): State {
@@ -65,14 +69,6 @@ function reducer(state: State, action: Action): State {
           (artifact) => artifact.id !== action.artifactId,
         ),
       }
-    case 'add-note':
-      return {
-        ...state,
-        notes: [
-          { id: uid('note'), title: action.title, body: action.body, pinned: false },
-          ...state.notes,
-        ],
-      }
     default:
       return state
   }
@@ -101,13 +97,18 @@ type StoreValue = {
   /** Set when the reader was opened from a citation, null otherwise. */
   passage: Passage | null
   artifacts: StudioArtifact[]
-  notes: State['notes']
+  /** Stored notes, as they were when the page was rendered. */
+  notes: NoteRow[]
   selectSource: (sourceId: string, selected: boolean) => void
   selectAllSources: (selected: boolean) => void
   openSource: (sourceId: string | null, passage?: Passage) => void
   generateArtifact: (kind: StudioArtifactKind) => Promise<StudioArtifact>
   removeArtifact: (artifactId: string) => void
-  addNote: (title: string, body: string) => void
+  // The three write into the database and return the reason when that fails,
+  // so the caller can keep its dialog open instead of losing what was typed.
+  addNote: (title: string, body: string) => Promise<NoteFormState>
+  editNote: (noteId: string, title: string, body: string) => Promise<NoteFormState>
+  removeNote: (noteId: string) => Promise<NoteFormState>
 }
 
 const StoreContext = createContext<StoreValue | null>(null)
@@ -116,11 +117,13 @@ export function NotebookStoreProvider({
   notebook,
   sources,
   history,
+  notes,
   children,
 }: {
   notebook: Notebook
   sources: SourceItem[]
   history: MessageRow[]
+  notes: NoteRow[]
   children: ReactNode
 }) {
   const [state, dispatch] = useReducer(reducer, emptyState)
@@ -142,7 +145,7 @@ export function NotebookStoreProvider({
       openSourceId: state.openSourceId,
       passage: state.passage,
       artifacts: state.artifacts,
-      notes: state.notes,
+      notes,
       // The check mark reacts at once and the write follows. If the write
       // fails the mark goes back, because a mark that lies decides which
       // sources answer the next question.
@@ -176,9 +179,13 @@ export function NotebookStoreProvider({
       },
       removeArtifact: (artifactId) =>
         dispatch({ type: 'remove-artifact', artifactId }),
-      addNote: (title, body) => dispatch({ type: 'add-note', title, body }),
+      // No optimistic copy here: the action revalidates the page, so the
+      // list comes back from the database and cannot drift away from it.
+      addNote: (title, body) => createNoteAction(notebook.id, title, body),
+      editNote: (noteId, title, body) => updateNoteAction(notebook.id, noteId, title, body),
+      removeNote: (noteId) => deleteNoteAction(notebook.id, noteId),
     }
-  }, [notebook, merged, history, state])
+  }, [notebook, merged, history, notes, state])
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }
