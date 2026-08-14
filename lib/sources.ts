@@ -1,7 +1,9 @@
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { chunkText } from '@/lib/chunker'
 import { getDb, type Database } from '@/lib/db'
 import { chunk, notebook, source, type SourceKind } from '@/lib/db/schema'
+import { maxChunksPerSource } from '@/lib/config'
+import type { Embedder } from '@/lib/embeddings'
 
 /**
  * Sources hang off a notebook, and a notebook has an owner. Every function
@@ -53,6 +55,8 @@ export async function createSource(
     kind: SourceKind
     text: string
     url?: string
+    /** Left out means the chunks get no embedding, which is allowed. */
+    embedder?: Embedder
   },
   db: Database = getDb(),
 ) {
@@ -83,8 +87,10 @@ export async function createSource(
     charEnd: piece.charEnd,
   }))
 
+  const withMeaning = await embedded(pieces, input.embedder)
+
   try {
-    if (pieces.length > 0) await db.insert(chunk).values(pieces)
+    if (withMeaning.length > 0) await db.insert(chunk).values(withMeaning)
   } catch (error) {
     await db.delete(source).where(eq(source.id, id))
     throw error
@@ -105,7 +111,7 @@ export async function createSource(
 export async function replaceSourceText(
   id: string,
   ownerId: string,
-  fields: { title: string; text: string },
+  fields: { title: string; text: string; embedder?: Embedder },
   db: Database = getDb(),
 ) {
   const owned = await db
@@ -132,9 +138,113 @@ export async function replaceSourceText(
     charEnd: piece.charEnd,
   }))
 
-  if (pieces.length > 0) await db.insert(chunk).values(pieces)
+  // The embeddings of the old passages went away with their chunk rows, so
+  // the new ones are embedded here, exactly as they are on an upload. If
+  // that fails they simply stay empty and are filled in on demand later.
+  const withMeaning = await embedded(pieces, fields.embedder)
+  if (withMeaning.length > 0) await db.insert(chunk).values(withMeaning)
 
   return true
+}
+
+/**
+ * Adds the meaning of each passage, if that is possible right now.
+ *
+ * A source without embeddings still works: it goes into the prompt whole,
+ * the way every source did before this existed. Losing the upload over an
+ * unreachable embedding model would be the worse trade, so the failure is
+ * logged and swallowed.
+ */
+async function embedded<T extends { text: string }>(
+  pieces: T[],
+  embedder?: Embedder,
+) {
+  if (!embedder || pieces.length === 0) return pieces
+
+  if (pieces.length > maxChunksPerSource) {
+    console.warn(
+      `sources: ${pieces.length} passages exceed the embedding limit of ${maxChunksPerSource}, storing without`,
+    )
+    return pieces
+  }
+
+  try {
+    const embeddings = await embedder.ofPassages(pieces.map((one) => one.text))
+    return pieces.map((piece, index) => ({
+      ...piece,
+      embedding: embeddings[index],
+    }))
+  } catch (error) {
+    console.error('sources: embedding the passages failed', error)
+    return pieces
+  }
+}
+
+/**
+ * Adds the missing embeddings of a selection, right when they are needed.
+ *
+ * Sources stored before embeddings existed, or while the model was
+ * unreachable, would otherwise be stuck on the expensive path forever, and
+ * the only cure would be deleting and uploading them again. Nobody works
+ * that out on their own, so the first question that needs them pays a few
+ * seconds and every later one is cheap.
+ *
+ * Returns whether the selection is now complete.
+ */
+export async function fillMissingEmbeddings(
+  input: { sourceIds: string[]; ownerId: string; embedder: Embedder },
+  db: Database = getDb(),
+): Promise<boolean> {
+  if (input.sourceIds.length === 0) return true
+
+  const missing = await db
+    .select({ id: chunk.id, text: chunk.text })
+    .from(chunk)
+    .innerJoin(source, eq(source.id, chunk.sourceId))
+    .innerJoin(notebook, eq(notebook.id, source.notebookId))
+    .where(
+      and(
+        inArray(source.id, input.sourceIds),
+        eq(notebook.ownerId, input.ownerId),
+        isNull(chunk.embedding),
+      ),
+    )
+    .limit(maxChunksPerSource + 1)
+
+  if (missing.length === 0) return true
+  if (missing.length > maxChunksPerSource) {
+    console.warn(
+      `sources: ${missing.length} passages without an embedding exceed the limit of ${maxChunksPerSource}`,
+    )
+    return false
+  }
+
+  try {
+    const embeddings = await input.embedder.ofPassages(
+      missing.map((one) => one.text),
+    )
+
+    // One statement instead of one per passage: a few hundred round trips
+    // over http would take longer than the embedding itself.
+    const rows = sql.join(
+      missing.map(
+        (one, index) =>
+          sql`(${one.id}::text, ${JSON.stringify(embeddings[index])}::vector)`,
+      ),
+      sql`, `,
+    )
+
+    await db.execute(sql`
+      update ${chunk} set embedding = filled.embedding
+      from (values ${rows}) as filled(id, embedding)
+      where ${chunk.id} = filled.id
+    `)
+
+    return true
+  } catch (error) {
+    console.error('sources: filling in the missing embeddings failed', error)
+    return false
+  }
 }
 
 export async function setSourceSelected(

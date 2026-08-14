@@ -1,7 +1,8 @@
 import { asc, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createTestDb } from '@/lib/db/test-db'
-import { chunk, user } from '@/lib/db/schema'
+import { chunk, embeddingSize, user } from '@/lib/db/schema'
+import type { Embedder } from '@/lib/embeddings'
 import { buildPrompt, getContextChunks } from '@/lib/context'
 import { createNotebook } from '@/lib/notebooks'
 import {
@@ -41,6 +42,18 @@ function writeNote(
   text: string,
 ) {
   return createSource({ ...where, title, kind: 'note', text }, database.db)
+}
+
+/** Points every text along the same axis. Enough to see whether it ran. */
+const stubEmbedder: Embedder = {
+  ofPassages: async (texts) => texts.map(() => axis()),
+  ofQuestion: async () => axis(),
+}
+
+function axis() {
+  const numbers = new Array<number>(embeddingSize).fill(0)
+  numbers[0] = 1
+  return numbers
 }
 
 const chunksOf = (sourceId: string) =>
@@ -132,6 +145,33 @@ describe('editing a note', () => {
     expect(pieces.length).toBeGreaterThan(1)
     for (const piece of pieces) {
       expect(longer.slice(piece.charStart, piece.charEnd)).toBe(piece.text)
+    }
+  })
+
+  it('embeds the new passages, so the note stays searchable', async () => {
+    const where = await setUp('alice')
+    const note = await createSource(
+      {
+        ...where,
+        title: 'Notiz',
+        kind: 'note',
+        text: 'Erste Fassung.',
+        embedder: stubEmbedder,
+      },
+      database.db,
+    )
+
+    await replaceSourceText(
+      note!.id,
+      where.ownerId,
+      { title: 'Notiz', text: 'Zweite Fassung.', embedder: stubEmbedder },
+      database.db,
+    )
+
+    // Without this the edited note would sit in a large notebook without a
+    // vector, and the search could not reach it until something refilled it.
+    for (const piece of await chunksOf(note!.id)) {
+      expect(piece.embedding).not.toBeNull()
     }
   })
 

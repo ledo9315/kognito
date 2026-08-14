@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { chunkText, chunkLimits } from '@/lib/chunker'
+import { chunkLimits } from '@/lib/config'
+import { chunkText } from '@/lib/chunker'
 
 const { min, max, overlap } = chunkLimits
 

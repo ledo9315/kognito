@@ -1,3 +1,4 @@
+import { quoteLength } from '@/lib/config'
 import type { NumberedChunk } from '@/lib/context'
 import type { Citation } from '@/lib/db/schema'
 
@@ -7,9 +8,6 @@ import type { Citation } from '@/lib/db/schema'
  * The model only ever writes a number. Everything the interface needs behind
  * that number, the chunk, the source and a bit of the text, is put back here.
  */
-
-/** How much of a passage the tooltip gets to show. */
-const quoteLength = 200
 
 /** One citation per passage that was in the prompt, whether cited or not. */
 export function toCitations(chunks: NumberedChunk[]): Citation[] {

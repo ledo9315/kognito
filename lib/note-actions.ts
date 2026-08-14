@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { createEmbedder } from '@/lib/embeddings'
 import { requireOwnerId } from '@/lib/session'
 import { createSource, deleteSource, replaceSourceText } from '@/lib/sources'
 
@@ -46,6 +47,7 @@ export async function createNoteAction(
     title: fields.data.title,
     kind: 'note',
     text: fields.data.body,
+    embedder: createEmbedder(),
   })
   if (!created) return { error: 'Unbekanntes Notizbuch.' }
 
@@ -70,6 +72,7 @@ export async function updateNoteAction(
   const updated = await replaceSourceText(noteId, await requireOwnerId(), {
     title: fields.data.title,
     text: fields.data.body,
+    embedder: createEmbedder(),
   })
   if (!updated) return unknownNote
 

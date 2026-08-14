@@ -37,7 +37,9 @@ import { suggestedQuestions } from '@/lib/data'
 import type { Citation } from '@/lib/db/schema'
 import type { MessageRow } from '@/lib/messages'
 
-function toUIMessage(row: MessageRow): UIMessage<{ citations: Citation[] }> {
+type ChatMessage = UIMessage<{ citations: Citation[]; omitted?: number }>
+
+function toUIMessage(row: MessageRow): ChatMessage {
   return {
     id: row.id,
     role: row.role,
@@ -69,7 +71,7 @@ export function ChatPanel() {
   const [clearing, startClearing] = useTransition()
   const [saving, startSaving] = useTransition()
 
-  const { messages, sendMessage, status, setMessages } = useChat<UIMessage<{ citations: Citation[] }>>(
+  const { messages, sendMessage, status, setMessages } = useChat<ChatMessage>(
     {
       messages: history.map(toUIMessage),
       transport: new DefaultChatTransport({ api: '/api/chat' }),
@@ -210,6 +212,17 @@ export function ChatPanel() {
                                   />
                                 </BubbleContent>
                               </Bubble>
+                              {message.metadata?.omitted ? (
+                                <p className="text-xs text-muted-foreground">
+                                  Hinweis: {message.metadata.omitted}{' '}
+                                  {message.metadata.omitted === 1
+                                    ? 'Abschnitt passte'
+                                    : 'Abschnitte passten'}{' '}
+                                  nicht mehr in die Anfrage und wurden nicht
+                                  gelesen.
+                                </p>
+                              ) : null}
+
                               <MessageFooter className="gap-1">
                                 <Button
                                   variant="ghost"

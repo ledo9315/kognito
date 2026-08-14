@@ -1,6 +1,9 @@
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, cosineDistance, eq, inArray, sql } from 'drizzle-orm'
 import { getDb, type Database } from '@/lib/db'
 import { chunk, notebook, source } from '@/lib/db/schema'
+import { maxPromptCharacters, searchResultCount } from '@/lib/config'
+import type { Embedder } from '@/lib/embeddings'
+import { fillMissingEmbeddings } from '@/lib/sources'
 
 /**
  * The two steps between the stored sources and the model: fetch the text,
@@ -38,35 +41,110 @@ export class NoContextError extends Error {
   }
 }
 
-export const maxPromptCharacters = 120_000
+const columns = {
+  chunkId: chunk.id,
+  sourceId: source.id,
+  sourceTitle: source.title,
+  text: chunk.text,
+  charStart: chunk.charStart,
+  charEnd: chunk.charEnd,
+}
+
+function selected(input: { sourceIds: string[]; ownerId: string }) {
+  return and(
+    inArray(source.id, input.sourceIds),
+    eq(notebook.ownerId, input.ownerId),
+    eq(source.status, 'ready'),
+  )
+}
 
 export async function getContextChunks(
-  input: { sourceIds: string[]; question: string; ownerId: string },
+  input: {
+    sourceIds: string[]
+    question: string
+    ownerId: string
+    embedder?: Embedder
+  },
   db: Database = getDb(),
 ): Promise<ContextChunk[]> {
 
   if (input.sourceIds.length === 0) return []
 
-  return db
+  const [size] = await db
     .select({
-      chunkId: chunk.id,
-      sourceId: source.id,
-      sourceTitle: source.title,
-      text: chunk.text,
-      charStart: chunk.charStart,
-      charEnd: chunk.charEnd,
+      characters: sql<number>`coalesce(sum(length(${chunk.text})), 0)`,
+      withoutEmbedding: sql<number>`count(*) filter (where ${chunk.embedding} is null)`,
     })
     .from(chunk)
     .innerJoin(source, eq(source.id, chunk.sourceId))
     .innerJoin(notebook, eq(notebook.id, source.notebookId))
-    .where(
-      and(
-        inArray(source.id, input.sourceIds),
-        eq(notebook.ownerId, input.ownerId),
-        eq(source.status, 'ready'),
-      ),
-    )
+    .where(selected(input))
+
+  if (Number(size?.characters ?? 0) <= maxPromptCharacters) {
+    return inReadingOrder(input, db)
+  }
+
+  if (!input.embedder) return inReadingOrder(input, db)
+
+  // is true if all sources have embeddings, or if the missing ones were filled
+  // is false if error, api-error, to many chunks
+  const complete =
+    Number(size?.withoutEmbedding ?? 0) === 0 ||
+    (await fillMissingEmbeddings(
+      { sourceIds: input.sourceIds, ownerId: input.ownerId, embedder: input.embedder },
+      db,
+    ))
+
+  if (!complete) return inReadingOrder(input, db)
+
+  return bySimilarity(input, db)
+}
+
+function inReadingOrder(
+  input: { sourceIds: string[]; ownerId: string },
+  db: Database,
+): Promise<ContextChunk[]> {
+  return db
+    .select(columns)
+    .from(chunk)
+    .innerJoin(source, eq(source.id, chunk.sourceId))
+    .innerJoin(notebook, eq(notebook.id, source.notebookId))
+    .where(selected(input))
     .orderBy(asc(source.createdAt), asc(source.id), asc(chunk.index))
+}
+
+async function bySimilarity(
+  input: { sourceIds: string[]; ownerId: string; question: string; embedder?: Embedder },
+  db: Database,
+): Promise<ContextChunk[]> {
+  const asked = await input.embedder!.ofQuestion(input.question)
+
+  const found = await db
+    .select({ ...columns, index: chunk.index, createdAt: source.createdAt })
+    .from(chunk)
+    .innerJoin(source, eq(source.id, chunk.sourceId))
+    .innerJoin(notebook, eq(notebook.id, source.notebookId))
+    .where(selected(input))
+    .orderBy(cosineDistance(chunk.embedding, asked))
+    .limit(searchResultCount)
+
+  // Found by similarity, handed over in reading order: passages of one source
+  // in the order they were written read as a text, not as a pile of hits.
+  found.sort(
+    (left, right) =>
+      left.createdAt.getTime() - right.createdAt.getTime() ||
+      left.sourceId.localeCompare(right.sourceId) ||
+      left.index - right.index,
+  )
+
+  return found.map((piece) => ({
+    chunkId: piece.chunkId,
+    sourceId: piece.sourceId,
+    sourceTitle: piece.sourceTitle,
+    text: piece.text,
+    charStart: piece.charStart,
+    charEnd: piece.charEnd,
+  }))
 }
 
 const rules = `Du bist ein Rechercheassistent. Beantworte die Frage ausschließlich mit den nummerierten Abschnitten, die dir vorliegen.

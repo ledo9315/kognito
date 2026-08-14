@@ -1,6 +1,6 @@
 {
-  "id": "6fbae585-451c-44aa-845d-8e5cccd737b9",
-  "prevId": "a8d2152d-38c7-4590-ad81-5371a6dbd26a",
+  "id": "8a2ee248-4417-417c-a774-b74259563b09",
+  "prevId": "6fbae585-451c-44aa-845d-8e5cccd737b9",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -385,80 +385,6 @@
         "message_notebook_id_notebook_id_fk": {
           "name": "message_notebook_id_notebook_id_fk",
           "tableFrom": "message",
-          "tableTo": "notebook",
-          "columnsFrom": [
-            "notebook_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.note": {
-      "name": "note",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "notebook_id": {
-          "name": "notebook_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "body": {
-          "name": "body",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "note_notebook_idx": {
-          "name": "note_notebook_idx",
-          "columns": [
-            {
-              "expression": "notebook_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "note_notebook_id_notebook_id_fk": {
-          "name": "note_notebook_id_notebook_id_fk",
-          "tableFrom": "note",
           "tableTo": "notebook",
           "columnsFrom": [
             "notebook_id"
