@@ -107,8 +107,14 @@ export const notebook = pgTable(
   (table) => [index('notebook_owner_idx').on(table.ownerId, table.updatedAt)],
 )
 
-/** How a source entered the notebook. Drives the icon and the extractor. */
-export const sourceKinds = ['pdf', 'doc', 'text', 'web', 'youtube'] as const
+/**
+ * How a source entered the notebook. Drives the icon and the extractor.
+ *
+ * `note` is the one kind written inside the app instead of extracted from
+ * something. It is a source so that a note can be selected, searched, cited
+ * and read like any other, without a second path through the retrieval.
+ */
+export const sourceKinds = ['pdf', 'doc', 'text', 'web', 'youtube', 'note'] as const
 export type SourceKind = (typeof sourceKinds)[number]
 
 /** Extraction runs after upload, so a source is not readable right away. */
@@ -218,18 +224,4 @@ export const artifact = pgTable(
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
   (table) => [index('artifact_notebook_idx').on(table.notebookId)],
-)
-
-export const note = pgTable(
-  'note',
-  {
-    id: text('id').primaryKey(),
-    notebookId: text('notebook_id')
-      .notNull()
-      .references(() => notebook.id, { onDelete: 'cascade' }),
-    title: text('title').notNull(),
-    body: text('body').notNull(),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-  },
-  (table) => [index('note_notebook_idx').on(table.notebookId)],
 )

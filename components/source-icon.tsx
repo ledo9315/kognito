@@ -1,4 +1,11 @@
-import { FileText, Globe, NotepadText, PlaySquare, Type } from 'lucide-react'
+import {
+  FileText,
+  Globe,
+  NotebookPen,
+  NotepadText,
+  PlaySquare,
+  Type,
+} from 'lucide-react'
 import type { SourceKind } from '@/lib/db/schema'
 
 const icons = {
@@ -7,6 +14,7 @@ const icons = {
   web: Globe,
   youtube: PlaySquare,
   text: Type,
+  note: NotebookPen,
 } as const
 
 export const sourceKindLabel: Record<SourceKind, string> = {
@@ -15,6 +23,7 @@ export const sourceKindLabel: Record<SourceKind, string> = {
   web: 'Website',
   youtube: 'YouTube',
   text: 'Text',
+  note: 'Notiz',
 }
 
 export function SourceIcon({ kind }: { kind: SourceKind }) {

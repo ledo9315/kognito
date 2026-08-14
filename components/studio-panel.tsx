@@ -13,6 +13,7 @@ import {
 import { toast } from 'sonner'
 import { useNotebookStore } from '@/components/notebook-store'
 import { AudioPlayer } from '@/components/audio-player'
+import { NotesSection } from '@/components/notes-section'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -78,7 +79,7 @@ const artifactIcons: Record<
 }
 
 export function StudioPanel() {
-  const { notebook, sources, artifacts, notes, generateArtifact, removeArtifact } =
+  const { notebook, sources, artifacts, generateArtifact, removeArtifact } =
     useNotebookStore()
   const [pending, setPending] = useState<StudioArtifactKind | null>(null)
 
@@ -154,7 +155,7 @@ export function StudioPanel() {
             Ergebnisse
           </h3>
 
-          {artifacts.length === 0 && notes.length === 0 ? (
+          {artifacts.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs leading-relaxed text-muted-foreground">
               Noch nichts erstellt. Wähle oben ein Format, um aus deinen Quellen
               eine Zusammenfassung, Lernhilfe oder Audio-Übersicht zu erzeugen.
@@ -185,23 +186,13 @@ export function StudioPanel() {
                   </Item>
                 )
               })}
-
-              {notes.map((note) => (
-                <Item key={note.id} variant="outline" size="sm">
-                  <ItemMedia variant="icon">
-                    <FileText />
-                  </ItemMedia>
-                  <ItemContent>
-                    <ItemTitle>{note.title}</ItemTitle>
-                    <ItemDescription className="line-clamp-2">
-                      {note.body}
-                    </ItemDescription>
-                  </ItemContent>
-                </Item>
-              ))}
             </div>
           )}
         </section>
+
+        <Separator />
+
+        <NotesSection />
       </div>
     </div>
   )
