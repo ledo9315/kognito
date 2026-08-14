@@ -15,6 +15,13 @@
       "when": 1786479693537,
       "tag": "0001_auth_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786661846480,
+      "tag": "0002_smooth_overlord",
+      "breakpoints": true
     }
   ]
 }

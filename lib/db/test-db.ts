@@ -1,4 +1,5 @@
 import { PGlite } from '@electric-sql/pglite'
+import { vector } from '@electric-sql/pglite-pgvector'
 import { drizzle } from 'drizzle-orm/pglite'
 import { migrate } from 'drizzle-orm/pglite/migrator'
 import type { Database } from '@/lib/db'
@@ -14,7 +15,10 @@ import * as schema from '@/lib/db/schema'
  * without a network database. It lives here, once, instead of in every test.
  */
 export async function createTestDb() {
-  const client = new PGlite()
+  // pgvector is not built into pglite, it comes as a separate package. The
+  // migration creates the extension, so without this every test would fail
+  // on the very first one.
+  const client = new PGlite({ extensions: { vector } })
   const db = drizzle(client, { schema })
   await migrate(db, { migrationsFolder: './lib/db/migrations' })
   return { db: db as unknown as Database, close: () => client.close() }

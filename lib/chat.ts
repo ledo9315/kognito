@@ -1,6 +1,7 @@
 import { streamText, type LanguageModel, type ModelMessage } from 'ai'
 import { citationsIn, toCitations } from '@/lib/citations'
 import { buildPrompt, getContextChunks, NoContextError } from '@/lib/context'
+import { createEmbedder, type Embedder } from '@/lib/embeddings'
 import { getDb, type Database } from '@/lib/db'
 import { saveMessage } from '@/lib/messages'
 import { findNotebook } from '@/lib/notebooks'
@@ -61,10 +62,11 @@ export type AnswerInput = {
 
 export async function streamAnswer(
   input: AnswerInput,
-  options: { model?: LanguageModel; db?: Database } = {},
+  options: { model?: LanguageModel; db?: Database; embedder?: Embedder } = {},
 ) {
   const db = options.db ?? getDb()
   const model = options.model ?? defaultModel()
+  const embedder = options.embedder ?? createEmbedder()
 
   const notebook = await findNotebook(input.notebookId, input.ownerId, db)
   if (!notebook) {
@@ -76,6 +78,7 @@ export async function streamAnswer(
       sourceIds: input.sourceIds,
       question: input.question,
       ownerId: input.ownerId,
+      embedder,
     },
     db,
   )
