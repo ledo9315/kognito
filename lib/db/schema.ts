@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import {
   boolean,
   index,
@@ -7,6 +8,7 @@ import {
   text,
   timestamp,
   uniqueIndex,
+  vector,
 } from 'drizzle-orm/pg-core'
 
 /* -------------------------------------------------------------------------- */
@@ -135,6 +137,13 @@ export const source = pgTable(
   (table) => [index('source_notebook_idx').on(table.notebookId)],
 )
 
+/**
+ * How many numbers describe the meaning of one passage. Fixed by the model
+ * in lib/embeddings.ts, and baked into the column: changing the model means
+ * a migration and new embeddings for everything.
+ */
+export const embeddingSize = 1536
+
 export const chunk = pgTable(
   'chunk',
   {
@@ -149,9 +158,18 @@ export const chunk = pgTable(
      *  exact passage instead of merely naming the document. */
     charStart: integer('char_start').notNull(),
     charEnd: integer('char_end').notNull(),
+    /**
+     * Null for everything stored before this column existed, and whenever
+     * the embedding model was unreachable. Those sources fall back to going
+     * into the prompt whole.
+     */
+    embedding: vector('embedding', { dimensions: embeddingSize }),
   },
   (table) => [
     uniqueIndex('chunk_source_index_idx').on(table.sourceId, table.index),
+    index('chunk_embedding_idx')
+      .using('hnsw', table.embedding.op('vector_cosine_ops'))
+      .where(sql`${table.embedding} is not null`),
   ],
 )
 

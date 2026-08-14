@@ -1,3 +1,5 @@
+import { chunkLimits } from '@/lib/config'
+
 export type TextChunk = {
   text: string
   charStart: number
@@ -8,12 +10,6 @@ type ChunkLimits = {
   min: number
   max: number
   overlap: number
-}
-
-export const chunkLimits: ChunkLimits = {
-  min: 500,
-  max: 1000,
-  overlap: 100,
 }
 
 export function chunkText(

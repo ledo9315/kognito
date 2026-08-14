@@ -9,6 +9,8 @@ import {
   extractFromUrl,
   type Extraction,
 } from '@/lib/extract'
+import { maxFileBytes } from '@/lib/config'
+import { createEmbedder } from '@/lib/embeddings'
 import { requireOwnerId } from '@/lib/session'
 import {
   createSource,
@@ -19,8 +21,6 @@ import {
 import { isYoutubeUrl, sourceHostLabel } from '@/lib/source-url'
 
 export type SourceFormState = { error: string } | null
-
-const maxFileBytes = 10_000_000
 
 const messages: Record<string, string> = {
   'empty': 'Diese Quelle enthält keinen Text.',
@@ -115,6 +115,7 @@ export async function addSourceAction(
     kind,
     text: extraction.text,
     url,
+    embedder: createEmbedder(),
   })
 
   if (!created) return { error: 'Unbekanntes Notizbuch.' }

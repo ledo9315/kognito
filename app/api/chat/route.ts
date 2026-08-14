@@ -9,7 +9,11 @@ import { ChatError, modelFailureMessage, streamAnswer } from '@/lib/chat'
 import type { Citation } from '@/lib/db/schema'
 import { getSession } from '@/lib/session'
 
-type ChatMessage = UIMessage<{ citations: Citation[] }>
+type ChatMessage = UIMessage<{
+  citations: Citation[]
+  /** Passages that did not fit. Zero unless a source has no embeddings. */
+  omitted: number
+}>
 
 /** A long answer over many sources can take a while. */
 export const maxDuration = 60
@@ -57,7 +61,7 @@ const conversationMessages = parsed.data.messages
   }
 
   try {
-    const { result, citations } = await streamAnswer({
+    const { result, citations, prompt } = await streamAnswer({
       notebookId: parsed.data.notebookId,
       ownerId: session.user.id,
       question: question.content,
@@ -71,7 +75,9 @@ const conversationMessages = parsed.data.messages
         onError: (error) =>
           JSON.stringify({ error: modelFailureMessage(error) }),
         messageMetadata: ({ part }) =>
-          part.type === 'start' ? { citations } : undefined,
+          part.type === 'start'
+            ? { citations, omitted: prompt.omitted }
+            : undefined,
       }),
     })
   } catch (error) {
