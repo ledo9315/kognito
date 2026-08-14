@@ -207,17 +207,3 @@ export const artifact = pgTable(
   },
   (table) => [index('artifact_notebook_idx').on(table.notebookId)],
 )
-
-export const note = pgTable(
-  'note',
-  {
-    id: text('id').primaryKey(),
-    notebookId: text('notebook_id')
-      .notNull()
-      .references(() => notebook.id, { onDelete: 'cascade' }),
-    title: text('title').notNull(),
-    body: text('body').notNull(),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-  },
-  (table) => [index('note_notebook_idx').on(table.notebookId)],
-)
