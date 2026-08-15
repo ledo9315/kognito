@@ -43,6 +43,28 @@ export function faqMeta(faq: Faq) {
 }
 
 /**
+ * The partial FAQs of a large selection into one, in the order they were
+ * asked, without the question that two windows both thought of.
+ *
+ * Same reasoning as `mergeBriefings`: joining in code cannot lose an entry,
+ * a second model pass could.
+ */
+export function mergeFaqs(parts: Faq[]): Faq {
+  const asked = new Set<string>()
+
+  const entries = parts
+    .flatMap((part) => part.entries)
+    .filter((entry) => {
+      const question = entry.question.trim().toLowerCase()
+      if (asked.has(question)) return false
+      asked.add(question)
+      return true
+    })
+
+  return { title: parts[0].title, entries }
+}
+
+/**
  * Stored artifacts come back from the database as `unknown` json. Anything
  * that does not match the schema was written by an older version and is
  * skipped rather than rendered half broken.

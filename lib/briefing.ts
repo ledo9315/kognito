@@ -61,6 +61,40 @@ export function briefingMeta(briefing: Briefing) {
 }
 
 /**
+ * The partial briefings of a large selection into one.
+ *
+ * In code and not by asking the model to merge: a second pass over the parts
+ * would be free to leave a section out, and leaving something out is the
+ * failure this whole path exists to prevent.
+ *
+ * Sections meet again over their heading, which is how two windows about the
+ * same topic end up in one place instead of twice in the list.
+ */
+export function mergeBriefings(parts: Briefing[]): Briefing {
+  const sections = new Map<string, string[]>()
+
+  for (const part of parts) {
+    for (const section of part.sections) {
+      const points = sections.get(section.heading) ?? []
+      sections.set(section.heading, [...points, ...section.points])
+    }
+  }
+
+  return {
+    title: parts[0].title,
+    // ponytail: the summaries are strung together, so a long selection gets
+    // a long paragraph. One more model call would read better and could
+    // drop a statement, which is the trade this path refuses everywhere else.
+    summary: parts.map((part) => part.summary).join(' '),
+    sections: [...sections].map(([heading, points]) => ({
+      heading,
+      points: [...new Set(points)],
+    })),
+    openQuestions: [...new Set(parts.flatMap((part) => part.openQuestions))],
+  }
+}
+
+/**
  * Stored artifacts come back from the database as `unknown` json. Anything
  * that does not match the schema was written by an older version and is
  * skipped rather than rendered half broken.
