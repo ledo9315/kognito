@@ -88,6 +88,32 @@ export function inTimeOrder(entries: TimelineEntry[]): TimelineEntry[] {
 }
 
 /**
+ * The partial timelines of a large selection into one.
+ *
+ * Order is not decided here. The entries are gathered, the duplicate that
+ * two windows both saw is dropped, and `inTimeOrder` sorts the result the
+ * same way it sorts a single answer.
+ *
+ * The same event is the same date and the same sentence. Two events on one
+ * date are two entries, which is why the key is both fields and not just
+ * the key that sorts.
+ */
+export function mergeTimelines(parts: Timeline[]): Timeline {
+  const seen = new Set<string>()
+
+  const entries = parts
+    .flatMap((part) => part.entries)
+    .filter((entry) => {
+      const key = `${entry.sortKey} ${entry.event.trim().toLowerCase()}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+
+  return { title: parts[0].title, entries }
+}
+
+/**
  * Stored artifacts come back from the database as `unknown` json. Anything
  * that does not match the schema was written by an older version and is
  * skipped rather than rendered half broken.

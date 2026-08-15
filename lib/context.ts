@@ -100,9 +100,18 @@ export async function getContextChunks(
   return bySimilarity(input, db)
 }
 
-function inReadingOrder(
+/**
+ * Every passage of the selection, in the order it was written.
+ *
+ * The whole selection, however large. A question can be answered from the
+ * passages nearest to it, an artifact about the selection cannot: what a
+ * search drops for being off topic is exactly what a summary still owes the
+ * reader. The studio therefore reads everything and pays for it in windows,
+ * see lib/artifact-generation.ts.
+ */
+export function inReadingOrder(
   input: { sourceIds: string[]; ownerId: string },
-  db: Database,
+  db: Database = getDb(),
 ): Promise<ContextChunk[]> {
   return db
     .select(columns)
@@ -175,6 +184,41 @@ export function buildPrompt(
     chunks: numbered,
     omitted: chunks.length - numbered.length,
   }
+}
+
+/**
+ * The passages cut into as few prompts as the limit allows, none left out.
+ *
+ * One prompt for a selection that fits, which is the ordinary case and
+ * unchanged by this. A larger one becomes several, each numbered from one,
+ * because the numbers structure a single prompt and nothing points back to
+ * them once the artifact is written.
+ */
+export function windowPassages(
+  chunks: ContextChunk[],
+  maxCharacters: number,
+): string[] {
+  const windows: ContextChunk[][] = []
+  let current: ContextChunk[] = []
+  let used = 0
+
+  for (const piece of chunks) {
+    // A passage that would push the window over the limit opens the next
+    // one. Never on an empty window, or a single oversized passage would
+    // fall out of the reading entirely.
+    if (current.length > 0 && used + piece.text.length > maxCharacters) {
+      windows.push(current)
+      current = []
+      used = 0
+    }
+
+    current.push(piece)
+    used += piece.text.length
+  }
+
+  if (current.length > 0) windows.push(current)
+
+  return windows.map((window) => numberPassages(window, maxCharacters).passages)
 }
 
 /**

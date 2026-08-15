@@ -9,12 +9,14 @@ import {
   NoSourcesError,
 } from '@/lib/artifact-generation'
 import { artifactMeta } from '@/lib/artifact-kinds'
+import { maxPromptCharacters } from '@/lib/config'
 import { createArtifact, deleteArtifact, listArtifacts } from '@/lib/artifacts'
-import { Briefing, briefingMeta, readBriefing } from '@/lib/briefing'
-import { Faq, faqMeta, readFaq } from '@/lib/faq'
+import { Briefing, briefingMeta, mergeBriefings, readBriefing } from '@/lib/briefing'
+import { Faq, faqMeta, mergeFaqs, readFaq } from '@/lib/faq'
 import {
   datedOnly,
   inTimeOrder,
+  mergeTimelines,
   readTimeline,
   timelineMeta,
   type Timeline,
@@ -489,5 +491,184 @@ describe('the meta line', () => {
       } as Briefing),
     ).toBe('1 Abschnitt · 1 Punkt')
     expect(faqMeta({ ...faq, entries: [faq.entries[0]] } as Faq)).toBe('1 Frage')
+  })
+})
+
+/**
+ * Longer than one prompt can hold, with the sentence that matters at the
+ * very end. That is the spot the similarity search could never reach, and
+ * the reason #55 exists. Same shape as in lib/retrieval.test.ts.
+ */
+function tooLongForOnePrompt(needle: string) {
+  const filler = 'Das Gremium tagte, ohne einen Beschluss zu fassen. '
+  const body = filler.repeat(Math.ceil((maxPromptCharacters * 1.5) / filler.length))
+  return `${body}${needle}`
+}
+
+/** Answers with one object per call and keeps every prompt it was handed. */
+function mockWindows(objects: unknown[]) {
+  const prompts: string[] = []
+
+  const model = new MockLanguageModelV4({
+    doGenerate: async (options) => {
+      const answer = objects[Math.min(prompts.length, objects.length - 1)]
+      prompts.push(JSON.stringify(options.prompt))
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(answer) }],
+        finishReason: { unified: 'stop' as const, raw: undefined },
+        usage: {
+          inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
+          outputTokens: { total: 5, text: 5, reasoning: undefined },
+        },
+        warnings: [],
+      }
+    },
+  })
+
+  return { model: model as unknown as LanguageModel, prompts }
+}
+
+describe('a selection larger than one prompt', () => {
+  it('reads the end of the selection, not only what a search would find', async () => {
+    const where = await setUp('alice')
+    const source = await createSource(
+      {
+        ...where,
+        title: 'Langes Protokoll',
+        kind: 'text',
+        text: tooLongForOnePrompt('Der Beschluss fiel erst am Ende der Sitzung.'),
+      },
+      database.db,
+    )
+    const { model, prompts } = mockWindows([briefing])
+
+    await generateBriefing(
+      { sourceIds: [source!.id], ownerId: where.ownerId },
+      { model, db: database.db },
+    )
+
+    expect(prompts.length).toBeGreaterThan(1)
+    expect(prompts.join('\n')).toContain('Der Beschluss fiel erst am Ende der Sitzung.')
+  })
+
+  it('asks once and merges nothing when the selection fits', async () => {
+    const where = await setUp('alice')
+    const source = await createSource(
+      {
+        ...where,
+        title: 'Architektur',
+        kind: 'text',
+        text: 'Als Datenbank dient Neon Postgres.',
+      },
+      database.db,
+    )
+    const { model, prompts } = mockWindows([briefing])
+
+    const result = await generateBriefing(
+      { sourceIds: [source!.id], ownerId: where.ownerId },
+      { model, db: database.db },
+    )
+
+    expect(prompts).toHaveLength(1)
+    expect(result).toEqual(briefing)
+  })
+
+  it('keeps the entries of every window in the timeline', async () => {
+    const where = await setUp('alice')
+    const source = await createSource(
+      {
+        ...where,
+        title: 'Langes Protokoll',
+        kind: 'text',
+        text: tooLongForOnePrompt('Am 3. Mai 2019 fiel der Beschluss.'),
+      },
+      database.db,
+    )
+    const { model, prompts } = mockWindows([
+      { title: 'Erste Hälfte', entries: [{ when: '2019', sortKey: '2019', event: 'Die Arbeit begann.' }] },
+      { title: 'Zweite Hälfte', entries: [{ when: '2011', sortKey: '2011', event: 'Der Plan entstand.' }] },
+    ])
+
+    const timeline = await generateTimeline(
+      { sourceIds: [source!.id], ownerId: where.ownerId },
+      { model, db: database.db },
+    )
+
+    expect(prompts.length).toBeGreaterThan(1)
+    // Both windows are in, and the later window's earlier date sorts first.
+    expect(timeline.entries.map((entry) => entry.sortKey)).toEqual(['2011', '2019'])
+  })
+})
+
+describe('merging the answers of several windows', () => {
+  it('gathers the points of a heading two windows both wrote about', () => {
+    const merged = mergeBriefings([
+      briefing as Briefing,
+      {
+        ...briefing,
+        title: 'Zweite Hälfte',
+        summary: 'Der zweite Teil.',
+        sections: [
+          { heading: 'Persistenz', points: ['Die Daten liegen in der Cloud.'] },
+          { heading: 'Betrieb', points: ['Der Betrieb läuft ohne Server.'] },
+        ],
+        openQuestions: ['Wird pgvector direkt mitgenutzt?', 'Wer betreibt das?'],
+      } as Briefing,
+    ])
+
+    expect(merged.title).toBe(briefing.title)
+    expect(merged.sections.map((section) => section.heading)).toEqual([
+      'Persistenz',
+      'Migrationen',
+      'Betrieb',
+    ])
+    expect(merged.sections[0].points).toEqual([
+      'Als Datenbank dient Neon Postgres.',
+      'Der Betrieb ist serverless.',
+      'Die Daten liegen in der Cloud.',
+    ])
+    // The question both windows raised is asked once.
+    expect(merged.openQuestions).toEqual([
+      'Wird pgvector direkt mitgenutzt?',
+      'Wer betreibt das?',
+    ])
+    expect(merged.summary).toContain('Der zweite Teil.')
+  })
+
+  it('asks a question that two windows both thought of only once', () => {
+    const merged = mergeFaqs([
+      faq as Faq,
+      {
+        title: 'Zweite Hälfte',
+        entries: [
+          { question: faq.entries[0].question.toUpperCase(), answer: 'Noch einmal dasselbe.' },
+          { question: 'Wer betreibt das?', answer: 'Das steht nicht im Text.' },
+        ],
+      },
+    ])
+
+    expect(merged.entries).toHaveLength(faq.entries.length + 1)
+    expect(merged.entries.at(-1)?.question).toBe('Wer betreibt das?')
+  })
+
+  it('drops the event two windows both saw and keeps two events of one day', () => {
+    const merged = mergeTimelines([
+      {
+        title: 'Erste Hälfte',
+        entries: [
+          { when: '3. Mai 2019', sortKey: '2019-05-03', event: 'Der Beschluss fiel.' },
+          { when: '3. Mai 2019', sortKey: '2019-05-03', event: 'Der Vertrag wurde unterschrieben.' },
+        ],
+      },
+      {
+        title: 'Zweite Hälfte',
+        entries: [
+          { when: '03.05.2019', sortKey: '2019-05-03', event: 'Der Beschluss fiel. ' },
+        ],
+      },
+    ])
+
+    expect(merged.entries).toHaveLength(2)
+    expect(merged.title).toBe('Erste Hälfte')
   })
 })

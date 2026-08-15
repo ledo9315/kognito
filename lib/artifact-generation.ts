@@ -1,15 +1,20 @@
 import { generateText, Output, type LanguageModel } from 'ai'
 import type { z } from 'zod'
-import { Briefing, briefingRules, type Briefing as BriefingType } from '@/lib/briefing'
+import {
+  Briefing,
+  briefingRules,
+  mergeBriefings,
+  type Briefing as BriefingType,
+} from '@/lib/briefing'
 import { defaultModel } from '@/lib/chat'
 import { maxPromptCharacters } from '@/lib/config'
-import { getContextChunks, numberPassages } from '@/lib/context'
+import { inReadingOrder, windowPassages } from '@/lib/context'
 import { getDb, type Database } from '@/lib/db'
-import { createEmbedder, type Embedder } from '@/lib/embeddings'
-import { Faq, faqRules, type Faq as FaqType } from '@/lib/faq'
+import { Faq, faqRules, mergeFaqs, type Faq as FaqType } from '@/lib/faq'
 import {
   datedOnly,
   inTimeOrder,
+  mergeTimelines,
   Timeline,
   timelineRules,
   type Timeline as TimelineType,
@@ -18,13 +23,11 @@ import {
 /**
  * Turning a selection of sources into an artifact.
  *
- * Three pieces: the passages, the instructions and the schema. Only the last
- * two change per kind, which is why the fetching sits here on its own and
- * not inside the briefing or the faq.
+ * Four pieces: the passages, the instructions, the schema and, for a
+ * selection too large for one prompt, the way the partial answers come back
+ * together. Only the last three change per kind, which is why the fetching
+ * sits here on its own and not inside the briefing or the faq.
  */
-
-/** An artifact has no single question, so this one stands in when searching. */
-const scope = 'Worum geht es in diesen Quellen, und was sind die Kernaussagen?'
 
 export class NoSourcesError extends Error {
   constructor() {
@@ -44,7 +47,6 @@ export class NoDatesError extends Error {
 export type GenerationOptions = {
   model?: LanguageModel
   db?: Database
-  embedder?: Embedder
 }
 
 type Selection = { sourceIds: string[]; ownerId: string }
@@ -54,22 +56,28 @@ export function generateBriefing(
   options: GenerationOptions = {},
 ): Promise<BriefingType> {
 
-  return generate(Briefing, briefingRules, input, options)
+  return generate(Briefing, briefingRules, mergeBriefings, input, options)
 }
 
 export function generateFaq(
   input: Selection,
   options: GenerationOptions = {},
 ): Promise<FaqType> {
-  
-  return generate(Faq, faqRules, input, options)
+
+  return generate(Faq, faqRules, mergeFaqs, input, options)
 }
 
 export async function generateTimeline(
   input: Selection,
   options: GenerationOptions = {},
 ): Promise<TimelineType> {
-  const timeline = await generate(Timeline, timelineRules, input, options)
+  const timeline = await generate(
+    Timeline,
+    timelineRules,
+    mergeTimelines,
+    input,
+    options,
+  )
 
   // The rules ask for points in time and the filter enforces it, because a
   // rule is a request and a model may read a duration as a date. Not empty
@@ -82,49 +90,53 @@ export async function generateTimeline(
   if (entries.length === 0) throw new NoDatesError()
 
   // Chronology is decided here, where a test can check it, and not by
-  // asking the model for it.
+  // asking the model for it. Windows are read side by side, so this is also
+  // what puts a late window's early date back where it belongs.
   return { ...timeline, entries: inTimeOrder(entries) }
 }
 
+/**
+ * Every passage into the prompt, in as many prompts as that takes.
+ *
+ * An artifact has no question, so there is nothing to search with. Before
+ * this, a selection over `maxPromptCharacters` was cut down by similarity to
+ * a stand-in question, and a summary lost precisely what lay off the topic
+ * it was supposed to describe. Reading everything costs one model call per
+ * window instead of one in total, and that is the whole price, see #55.
+ */
 async function generate<T>(
   schema: z.ZodType<T>,
   rules: string,
+  merge: (parts: T[]) => T,
   input: Selection,
   options: GenerationOptions,
 ): Promise<T> {
-  const passages = await passagesFor(input, options)
+  const chunks = await inReadingOrder(input, options.db ?? getDb())
+  if (chunks.length === 0) throw new NoSourcesError()
 
-  const { output } = await generateText({
+  const windows = windowPassages(chunks, maxPromptCharacters)
+
+  // Side by side, because the windows do not depend on each other and a
+  // reader should not wait for three round trips in a row.
+  const parts = await Promise.all(
+    windows.map((passages) => once(schema, rules, passages, options)),
+  )
+
+  // The ordinary selection is one window, and then there is nothing to
+  // merge and nothing about it that differs from before.
+  return parts.length === 1 ? parts[0] : merge(parts)
+}
+
+function once<T>(
+  schema: z.ZodType<T>,
+  rules: string,
+  passages: string,
+  options: GenerationOptions,
+): Promise<T> {
+  return generateText({
     model: options.model ?? defaultModel(),
     output: Output.object({ schema }),
     system: rules,
     prompt: `Abschnitte:\n\n${passages}`,
-  })
-
-  return output
-}
-
-/**
- * The same passages the chat would get for this selection, which is what
- * keeps an artifact and an answer from disagreeing about the sources.
- */
-async function passagesFor(input: Selection, options: GenerationOptions) {
-  const db = options.db ?? getDb()
-
-  const chunks = await getContextChunks(
-    {
-      sourceIds: input.sourceIds,
-      // ponytail: one generic question for every artifact. Harmless below
-      // maxPromptCharacters, where the whole selection goes in anyway. Above
-      // it a summary should read everything, not the nearest hits, see #55.
-      question: scope,
-      ownerId: input.ownerId,
-      embedder: options.embedder ?? createEmbedder(),
-    },
-    db,
-  )
-
-  if (chunks.length === 0) throw new NoSourcesError()
-
-  return numberPassages(chunks, maxPromptCharacters).passages
+  }).then((result) => result.output)
 }

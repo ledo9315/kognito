@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { maxPromptCharacters, searchResultCount } from '@/lib/config'
-import { buildPrompt, getContextChunks } from '@/lib/context'
+import { buildPrompt, getContextChunks, windowPassages } from '@/lib/context'
 import { and, eq, isNull } from 'drizzle-orm'
 import { createTestDb } from '@/lib/db/test-db'
 import { chunk, embeddingSize, user } from '@/lib/db/schema'
@@ -466,5 +466,55 @@ describe('owner scoping still holds when searching', () => {
 
     expect(chunks.length).toBeGreaterThan(0)
     expect(chunks.every((piece) => piece.sourceTitle === 'Bobs Quelle')).toBe(true)
+  })
+})
+
+describe('cutting a selection into prompts', () => {
+  function passage(text: string) {
+    return {
+      chunkId: crypto.randomUUID(),
+      sourceId: 'source',
+      sourceTitle: 'Quelle',
+      text,
+      charStart: 0,
+      charEnd: text.length,
+    }
+  }
+
+  it('leaves a selection that fits in one prompt', () => {
+    const windows = windowPassages([passage('Erster.'), passage('Zweiter.')], 100)
+
+    expect(windows).toHaveLength(1)
+    expect(windows[0]).toContain('Erster.')
+    expect(windows[0]).toContain('Zweiter.')
+  })
+
+  it('opens the next prompt instead of dropping a passage', () => {
+    const windows = windowPassages(
+      [passage('a'.repeat(60)), passage('b'.repeat(60)), passage('c'.repeat(60))],
+      100,
+    )
+
+    expect(windows).toHaveLength(3)
+    expect(windows.join('\n')).toContain('c'.repeat(60))
+  })
+
+  it('numbers every prompt from one, because nothing points back at them', () => {
+    const windows = windowPassages([passage('a'.repeat(80)), passage('b'.repeat(80))], 100)
+
+    expect(windows).toHaveLength(2)
+    expect(windows[0].startsWith('[1] ')).toBe(true)
+    expect(windows[1].startsWith('[1] ')).toBe(true)
+  })
+
+  it('keeps a passage that is longer than a whole prompt', () => {
+    const windows = windowPassages([passage('a'.repeat(300))], 100)
+
+    expect(windows).toHaveLength(1)
+    expect(windows[0]).toContain('a'.repeat(300))
+  })
+
+  it('has nothing to cut when there is nothing selected', () => {
+    expect(windowPassages([], 100)).toEqual([])
   })
 })
