@@ -2,13 +2,8 @@
 
 import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react'
 import { toast } from 'sonner'
+import type { ArtifactRow } from '@/lib/artifacts'
 import type { StudioArtifact, StudioArtifactKind } from '@/lib/data'
-import {
-  createNoteAction,
-  deleteNoteAction,
-  updateNoteAction,
-  type NoteFormState,
-} from '@/lib/note-actions'
 import {
   selectAllSourcesAction,
   selectSourceAction,
@@ -23,7 +18,9 @@ export type Passage = { charStart: number; charEnd: number }
 type State = {
   selection: Record<string, boolean>
   openSourceId: string | null
+  openArtifactId: string | null
   passage: Passage | null
+  /** Only the tiles that are not built yet, see `simulated` below. */
   artifacts: StudioArtifact[]
 }
 
@@ -31,12 +28,14 @@ type Action =
   | { type: 'select'; sourceId: string; selected: boolean }
   | { type: 'select-all'; sourceIds: string[]; selected: boolean }
   | { type: 'open-source'; sourceId: string | null; passage: Passage | null }
+  | { type: 'open-artifact'; artifactId: string | null }
   | { type: 'add-artifact'; artifact: StudioArtifact }
   | { type: 'remove-artifact'; artifactId: string }
 
 const emptyState: State = {
   selection: {},
   openSourceId: null,
+  openArtifactId: null,
   passage: null,
   artifacts: [],
 }
@@ -57,8 +56,11 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         openSourceId: action.sourceId,
+        openArtifactId: null,
         passage: action.passage,
       }
+    case 'open-artifact':
+      return { ...state, openArtifactId: action.artifactId, openSourceId: null }
     case 'add-artifact':
       return { ...state, artifacts: [action.artifact, ...state.artifacts] }
     case 'remove-artifact':
@@ -93,21 +95,20 @@ type StoreValue = {
   /** The stored conversation, as it was when the page was rendered. */
   history: MessageRow[]
   openSourceId: string | null
+  openArtifactId: string | null
   /** Set when the reader was opened from a citation, null otherwise. */
   passage: Passage | null
-  artifacts: StudioArtifact[]
+  /** Generated and stored. Only briefings so far. */
+  artifacts: ArtifactRow[]
+  simulated: StudioArtifact[]
   /** The sources of kind `note`, the ones written here instead of uploaded. */
   notes: SourceItem[]
   selectSource: (sourceId: string, selected: boolean) => void
   selectAllSources: (selected: boolean) => void
   openSource: (sourceId: string | null, passage?: Passage) => void
-  generateArtifact: (kind: StudioArtifactKind) => Promise<StudioArtifact>
-  removeArtifact: (artifactId: string) => void
-  // The three write into the database and return the reason when that fails,
-  // so the caller can keep its dialog open instead of losing what was typed.
-  addNote: (title: string, body: string) => Promise<NoteFormState>
-  editNote: (noteId: string, title: string, body: string) => Promise<NoteFormState>
-  removeNote: (noteId: string) => Promise<NoteFormState>
+  openArtifact: (artifactId: string | null) => void
+  simulateArtifact: (kind: StudioArtifactKind) => Promise<StudioArtifact>
+  removeSimulated: (artifactId: string) => void
 }
 
 const StoreContext = createContext<StoreValue | null>(null)
@@ -116,11 +117,13 @@ export function NotebookStoreProvider({
   notebook,
   sources,
   history,
+  artifacts,
   children,
 }: {
   notebook: Notebook
   sources: SourceItem[]
   history: MessageRow[]
+  artifacts: ArtifactRow[]
   children: ReactNode
 }) {
   const [state, dispatch] = useReducer(reducer, emptyState)
@@ -140,8 +143,10 @@ export function NotebookStoreProvider({
       sources: merged,
       history,
       openSourceId: state.openSourceId,
+      openArtifactId: state.openArtifactId,
       passage: state.passage,
-      artifacts: state.artifacts,
+      artifacts,
+      simulated: state.artifacts,
       notes: merged.filter((source) => source.kind === 'note'),
       // The check mark reacts at once and the write follows. If the write
       // fails the mark goes back, because a mark that lies decides which
@@ -162,7 +167,8 @@ export function NotebookStoreProvider({
       },
       openSource: (sourceId, passage) =>
         dispatch({ type: 'open-source', sourceId, passage: passage ?? null }),
-      generateArtifact: async (kind) => {
+      openArtifact: (artifactId) => dispatch({ type: 'open-artifact', artifactId }),
+      simulateArtifact: async (kind) => {
         await new Promise((resolve) => setTimeout(resolve, 1600))
         const artifact: StudioArtifact = {
           id: uid('artifact'),
@@ -174,15 +180,10 @@ export function NotebookStoreProvider({
         dispatch({ type: 'add-artifact', artifact })
         return artifact
       },
-      removeArtifact: (artifactId) =>
+      removeSimulated: (artifactId) =>
         dispatch({ type: 'remove-artifact', artifactId }),
-      // No optimistic copy here: the action revalidates the page, so the
-      // list comes back from the database and cannot drift away from it.
-      addNote: (title, body) => createNoteAction(notebook.id, title, body),
-      editNote: (noteId, title, body) => updateNoteAction(notebook.id, noteId, title, body),
-      removeNote: (noteId) => deleteNoteAction(notebook.id, noteId),
     }
-  }, [notebook, merged, history, state])
+  }, [notebook, merged, history, artifacts, state])
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }

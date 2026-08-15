@@ -167,18 +167,7 @@ export function buildPrompt(
   // A model without sources answers from what it happens to know
   if (chunks.length === 0) throw new NoContextError()
 
-  const numbered: NumberedChunk[] = []
-  let used = 0
-
-  for (const piece of chunks) {
-    used += piece.text.length
-    if (used > limits.maxCharacters && numbered.length > 0) break
-    numbered.push({ ...piece, number: numbered.length + 1 })
-  }
-
-  const passages = numbered
-    .map((piece) => `[${piece.number}] (${piece.sourceTitle})\n${piece.text}`)
-    .join('\n\n')
+  const { passages, numbered } = numberPassages(chunks, limits.maxCharacters)
 
   return {
     system: rules,
@@ -186,4 +175,28 @@ export function buildPrompt(
     chunks: numbered,
     omitted: chunks.length - numbered.length,
   }
+}
+
+/**
+ * The passages as the model reads them, numbered and cut off at the limit.
+ *
+ * Shared by the chat and by the studio artifacts, because both hand the same
+ * text to a model and both have to stop at the same length. Only the
+ * instructions around it differ.
+ */
+export function numberPassages(chunks: ContextChunk[], maxCharacters: number) {
+  const numbered: NumberedChunk[] = []
+  let used = 0
+
+  for (const piece of chunks) {
+    used += piece.text.length
+    if (used > maxCharacters && numbered.length > 0) break
+    numbered.push({ ...piece, number: numbered.length + 1 })
+  }
+
+  const passages = numbered
+    .map((piece) => `[${piece.number}] (${piece.sourceTitle})\n${piece.text}`)
+    .join('\n\n')
+
+  return { passages, numbered, omitted: chunks.length - numbered.length }
 }

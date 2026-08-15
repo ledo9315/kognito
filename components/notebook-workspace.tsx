@@ -8,6 +8,7 @@ import {
   useNotebookStore,
 } from '@/components/notebook-store'
 import { AppLogo } from '@/components/app-logo'
+import { ArtifactReader } from '@/components/artifact-reader'
 import { ChatPanel } from '@/components/chat-panel'
 import { NotebookTitle } from '@/components/notebook-title'
 import { SourcesPanel } from '@/components/sources-panel'
@@ -16,6 +17,7 @@ import { StudioPanel } from '@/components/studio-panel'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import type { ArtifactRow } from '@/lib/artifacts'
 import type { MessageRow } from '@/lib/messages'
 import type { NotebookRow } from '@/lib/notebooks'
 import type { SourceItem } from '@/lib/sources'
@@ -27,10 +29,12 @@ export function NotebookWorkspace({
   notebook,
   sources,
   history,
+  artifacts,
 }: {
   notebook: NotebookRow
   sources: SourceItem[]
   history: MessageRow[]
+  artifacts: ArtifactRow[]
 }) {
   return (
     <NotebookStoreProvider
@@ -42,6 +46,7 @@ export function NotebookWorkspace({
       }}
       sources={sources}
       history={history}
+      artifacts={artifacts}
     >
       <Workspace />
     </NotebookStoreProvider>
@@ -49,10 +54,12 @@ export function NotebookWorkspace({
 }
 
 function Workspace() {
-  const { notebook, sources, openSourceId, openSource } = useNotebookStore()
+  const { notebook, sources, openSourceId, openArtifactId, openSource, openArtifact } =
+    useNotebookStore()
   const [mobileTab, setMobileTab] = useState<MobileTab>('chat')
 
-  const readerOpen = Boolean(openSourceId)
+  const readerOpen = Boolean(openSourceId) || Boolean(openArtifactId)
+  const reader = openArtifactId ? <ArtifactReader /> : <SourceReader />
 
   return (
     <div className="flex h-svh flex-col overflow-hidden bg-muted/40">
@@ -99,7 +106,7 @@ function Workspace() {
             readerOpen ? 'w-104' : 'w-80',
           )}
         >
-          {readerOpen ? <SourceReader /> : <StudioPanel />}
+          {readerOpen ? reader : <StudioPanel />}
         </aside>
       </div>
 
@@ -107,7 +114,7 @@ function Workspace() {
       <div className="flex min-h-0 flex-1 flex-col lg:hidden">
         <div className="min-h-0 flex-1 overflow-hidden bg-background">
           {mobileTab === 'sources' && <SourcesPanel />}
-          {mobileTab === 'chat' && (readerOpen ? <SourceReader /> : <ChatPanel />)}
+          {mobileTab === 'chat' && (readerOpen ? reader : <ChatPanel />)}
           {mobileTab === 'studio' && <StudioPanel />}
         </div>
 
@@ -120,6 +127,7 @@ function Workspace() {
             onValueChange={(next) => {
               if (!next[0]) return
               openSource(null)
+              openArtifact(null)
               setMobileTab(next[0] as MobileTab)
             }}
           >

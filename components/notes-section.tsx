@@ -22,12 +22,17 @@ import {
   ItemTitle,
 } from '@/components/ui/item'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  createNoteAction,
+  deleteNoteAction,
+  updateNoteAction,
+} from '@/lib/note-actions'
 
 /** Null id means a new note, an id means the existing one is being edited. */
 type Draft = { id: string | null; title: string; body: string }
 
 export function NotesSection() {
-  const { notes, addNote, editNote, removeNote } = useNotebookStore()
+  const { notebook, notes } = useNotebookStore()
   const [draft, setDraft] = useState<Draft | null>(null)
   const [pending, startTransition] = useTransition()
 
@@ -41,9 +46,11 @@ export function NotesSection() {
     const { id } = draft
 
     startTransition(async () => {
+      // The action revalidates the page, so the list comes back from the
+      // database. No optimistic copy that could drift away from it.
       const result = id
-        ? await editNote(id, title, body)
-        : await addNote(title, body)
+        ? await updateNoteAction(notebook.id, id, title, body)
+        : await createNoteAction(notebook.id, title, body)
 
       // The dialog stays open on a failure, otherwise the text is gone.
       if (result) {
@@ -58,7 +65,7 @@ export function NotesSection() {
 
   function remove(noteId: string, title: string) {
     startTransition(async () => {
-      const result = await removeNote(noteId)
+      const result = await deleteNoteAction(notebook.id, noteId)
       toast[result ? 'error' : 'success'](
         result ? result.error : `„${title}“ gelöscht`,
       )
