@@ -19,6 +19,7 @@ import {
   setSourceSelected,
 } from '@/lib/sources'
 import { isYoutubeUrl, sourceHostLabel } from '@/lib/source-url'
+import { summarize } from '@/lib/summary'
 
 export type SourceFormState = { error: string } | null
 
@@ -108,6 +109,9 @@ export async function addSourceAction(
     throw error
   }
 
+  // The upload waits for these two or three sentences. A second job that
+  // writes them afterwards would need a status, a poll and a revalidate for
+  // something that takes about as long as the extraction did.
   const created = await createSource({
     notebookId: notebookId.data,
     ownerId,
@@ -115,6 +119,7 @@ export async function addSourceAction(
     kind,
     text: extraction.text,
     url,
+    summary: await summarize(extraction.text),
     embedder: createEmbedder(),
   })
 

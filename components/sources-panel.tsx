@@ -113,6 +113,11 @@ export function SourcesPanel() {
                       >
                         {source.title}
                       </span>
+                      {source.summary ? (
+                        <span className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+                          {source.summary}
+                        </span>
+                      ) : null}
                       <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                         <span className="[&_svg]:size-3">
                           <SourceIcon kind={source.kind} />

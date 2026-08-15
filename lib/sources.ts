@@ -55,6 +55,8 @@ export async function createSource(
     kind: SourceKind
     text: string
     url?: string
+    /** Left out means the source shows no summary, which is allowed. */
+    summary?: string | null
     /** Left out means the chunks get no embedding, which is allowed. */
     embedder?: Embedder
   },
@@ -75,6 +77,7 @@ export async function createSource(
     kind: input.kind,
     url: input.url,
     content: input.text,
+    summary: input.summary,
     status: 'ready',
   })
 
