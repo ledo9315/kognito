@@ -1,9 +1,11 @@
 import { MockLanguageModelV4 } from 'ai/test'
 import type { LanguageModel } from 'ai'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { generateBriefing, NoSourcesError } from '@/lib/artifact-generation'
+import { generateBriefing, generateFaq, NoSourcesError } from '@/lib/artifact-generation'
+import { artifactMeta } from '@/lib/artifact-kinds'
 import { createArtifact, deleteArtifact, listArtifacts } from '@/lib/artifacts'
 import { Briefing, briefingMeta, readBriefing } from '@/lib/briefing'
+import { Faq, faqMeta, readFaq } from '@/lib/faq'
 import { createTestDb } from '@/lib/db/test-db'
 import { user } from '@/lib/db/schema'
 import { createNotebook } from '@/lib/notebooks'
@@ -38,6 +40,20 @@ const briefing = {
     { heading: 'Migrationen', points: ['Migrationen entstehen mit Drizzle.'] },
   ],
   openQuestions: ['Wird pgvector direkt mitgenutzt?'],
+}
+
+const faq = {
+  title: 'Fragen zur Architektur',
+  entries: [
+    {
+      question: 'Welche Datenbank kommt zum Einsatz?',
+      answer: 'Als Datenbank dient Neon Postgres.',
+    },
+    {
+      question: 'Wie entstehen Migrationen?',
+      answer: 'Migrationen entstehen mit Drizzle.',
+    },
+  ],
 }
 
 /** Answers with the given object and records the prompt it was handed. */
@@ -137,6 +153,56 @@ describe('generating a briefing', () => {
   })
 })
 
+describe('generating an faq', () => {
+  it('returns question and answer pairs that match the schema', async () => {
+    const where = await setUp('alice')
+    const source = await createSource(
+      {
+        ...where,
+        title: 'Architektur',
+        kind: 'text',
+        text: 'Als Datenbank dient Neon Postgres. Migrationen entstehen mit Drizzle.',
+      },
+      database.db,
+    )
+    const { model, seen } = mockModel(faq)
+
+    const generated = await generateFaq(
+      { sourceIds: [source!.id], ownerId: where.ownerId },
+      { model, db: database.db },
+    )
+
+    expect(Faq.safeParse(generated).success).toBe(true)
+    expect(generated.entries).toHaveLength(2)
+    // The rules differ from the briefing, the passages do not.
+    expect(textOf(seen.prompt)).toContain('FAQ')
+    expect(textOf(seen.prompt)).toContain('Als Datenbank dient Neon Postgres.')
+  })
+
+  it('refuses a selection without readable text', async () => {
+    const where = await setUp('alice')
+    const { model } = mockModel(faq)
+
+    await expect(
+      generateFaq({ sourceIds: [], ownerId: where.ownerId }, { model, db: database.db }),
+    ).rejects.toBeInstanceOf(NoSourcesError)
+  })
+
+  it('does not read the sources of another account', async () => {
+    const hers = await setUp('alice')
+    await setUp('bob')
+    const source = await createSource(
+      { ...hers, title: 'Privat', kind: 'text', text: 'Vertraulicher Text.' },
+      database.db,
+    )
+    const { model } = mockModel(faq)
+
+    await expect(
+      generateFaq({ sourceIds: [source!.id], ownerId: 'bob' }, { model, db: database.db }),
+    ).rejects.toBeInstanceOf(NoSourcesError)
+  })
+})
+
 describe('storing an artifact', () => {
   it('keeps the content readable as a briefing', async () => {
     const where = await setUp('alice')
@@ -150,6 +216,36 @@ describe('storing an artifact', () => {
     expect(row.id).toBe(stored!.id)
     expect(row.kind).toBe('briefing')
     expect(readBriefing(row.content)).toEqual(briefing)
+  })
+
+  it('keeps the two kinds apart', async () => {
+    const where = await setUp('alice')
+
+    await createArtifact(
+      { ...where, kind: 'briefing', title: briefing.title, content: briefing },
+      database.db,
+    )
+    await createArtifact(
+      { ...where, kind: 'faq', title: faq.title, content: faq },
+      database.db,
+    )
+
+    const rows = await listArtifacts(where.notebookId, where.ownerId, database.db)
+    const stored = Object.fromEntries(rows.map((row) => [row.kind, row]))
+
+    expect(readFaq(stored.faq.content)).toEqual(faq)
+    expect(readBriefing(stored.briefing.content)).toEqual(briefing)
+    // A briefing is not an faq, even though both carry a title.
+    expect(readFaq(stored.briefing.content)).toBeNull()
+    expect(readBriefing(stored.faq.content)).toBeNull()
+  })
+
+  it('describes every kind from its own content', async () => {
+    expect(artifactMeta({ kind: 'faq', content: faq })).toBe('2 Fragen')
+    expect(artifactMeta({ kind: 'briefing', content: briefing })).toBe(
+      '2 Abschnitte · 3 Punkte',
+    )
+    expect(artifactMeta({ kind: 'faq', content: { headline: 'anderes' } })).toBeNull()
   })
 
   it('skips content that does not match the schema', async () => {
@@ -210,5 +306,6 @@ describe('the meta line', () => {
         sections: [{ heading: 'Eins', points: ['Ein Satz.'] }],
       } as Briefing),
     ).toBe('1 Abschnitt · 1 Punkt')
+    expect(faqMeta({ ...faq, entries: [faq.entries[0]] } as Faq)).toBe('1 Frage')
   })
 })

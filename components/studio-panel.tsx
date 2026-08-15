@@ -27,9 +27,9 @@ import {
 } from '@/components/ui/item'
 import {
   deleteArtifactAction,
-  generateBriefingAction,
+  generateArtifactAction,
 } from '@/lib/artifact-actions'
-import { briefingMeta, readBriefing } from '@/lib/briefing'
+import { artifactLabels, artifactMeta, isGenerated } from '@/lib/artifact-kinds'
 import type { StudioArtifactKind } from '@/lib/data'
 
 const generators: {
@@ -100,7 +100,6 @@ export function StudioPanel() {
   const audioArtifact = simulated.find((artifact) => artifact.kind === 'audio')
 
   async function generate(kind: StudioArtifactKind) {
-    
     if (selectedCount === 0) {
       toast.error('Keine Quelle ausgewählt', {
         description: 'Wähle mindestens eine Quelle aus.',
@@ -110,15 +109,20 @@ export function StudioPanel() {
 
     setPending(kind)
 
-    if (kind === 'briefing') {
-      const result = await generateBriefingAction(
+    if (isGenerated(kind)) {
+
+      const result = await generateArtifactAction(
         notebook.id,
+        kind,
         selected.map((source) => source.id),
       )
+      
       setPending(null)
 
       if (!result.ok) {
-        toast.error('Briefing nicht erstellt', { description: result.error })
+        toast.error(`${artifactLabels[kind]} nicht erstellt`, {
+          description: result.error,
+        })
         return
       }
 
@@ -127,7 +131,7 @@ export function StudioPanel() {
       return
     }
 
-    // the other five tiles still fake it
+    // the remaining tiles still fake it
     const artifact = await simulateArtifact(kind)
     setPending(null)
     toast.success(`${artifact.title} erstellt`, { description: artifact.meta })
@@ -206,7 +210,8 @@ export function StudioPanel() {
           ) : (
             <div className="flex flex-col gap-2">
               {artifacts.map((artifact) => {
-                const briefing = readBriefing(artifact.content)
+                const Icon = artifactIcons[artifact.kind]
+                const meta = artifactMeta(artifact)
                 return (
                   <Item
                     key={artifact.id}
@@ -223,13 +228,13 @@ export function StudioPanel() {
                     }
                   >
                     <ItemMedia variant="icon">
-                      <FileText />
+                      <Icon />
                     </ItemMedia>
                     <ItemContent>
                       <ItemTitle>{artifact.title}</ItemTitle>
                       <ItemDescription>
-                        {briefing
-                          ? briefingMeta(briefing)
+                        {meta
+                          ? `${artifactLabels[artifact.kind]} · ${meta}`
                           : 'Älteres Format, bitte neu erzeugen'}
                       </ItemDescription>
                     </ItemContent>

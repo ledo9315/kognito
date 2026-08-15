@@ -2,8 +2,13 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { generatedKinds, type GeneratedKind } from '@/lib/artifact-kinds'
 import { createArtifact, deleteArtifact, type ArtifactRow } from '@/lib/artifacts'
-import { generateBriefing, NoSourcesError } from '@/lib/artifact-generation'
+import {
+  generateBriefing,
+  generateFaq,
+  NoSourcesError,
+} from '@/lib/artifact-generation'
 import { modelFailureMessage } from '@/lib/chat'
 import { requireOwnerId } from '@/lib/session'
 
@@ -13,15 +18,22 @@ export type ArtifactState =
 
 const Input = z.object({
   notebookId: z.uuid(),
+  kind: z.enum(generatedKinds),
   sourceIds: z.array(z.uuid()).min(1).max(200),
 })
 
-export async function generateBriefingAction(
+const generators: Record<GeneratedKind, (input: { sourceIds: string[]; ownerId: string }) => Promise<{ title: string }>> = {
+  briefing: generateBriefing,
+  faq: generateFaq,
+}
+
+export async function generateArtifactAction(
   notebookId: string,
+  kind: string,
   sourceIds: string[],
 ): Promise<ArtifactState> {
 
-  const parsed = Input.safeParse({ notebookId, sourceIds })
+  const parsed = Input.safeParse({ notebookId, kind, sourceIds })
 
   if (!parsed.success) {
     return { ok: false, error: 'Wähle mindestens eine Quelle aus.' }
@@ -29,10 +41,13 @@ export async function generateBriefingAction(
 
   const ownerId = await requireOwnerId()
 
-  let briefing
+  let content
 
   try {
-    briefing = await generateBriefing({ sourceIds: parsed.data.sourceIds, ownerId })
+    content = await generators[parsed.data.kind]({
+      sourceIds: parsed.data.sourceIds,
+      ownerId,
+    })
   } catch (error) {
     if (error instanceof NoSourcesError) {
       return {
@@ -40,21 +55,23 @@ export async function generateBriefingAction(
         error: 'Die ausgewählten Quellen enthalten keinen lesbaren Text.',
       }
     }
+
     // A model that refuses or times out is not a bug to crash on, it is a
     // sentence the user can act on.
-    console.error('artifacts: generating the briefing failed', error)
+    console.error('artifacts: generating failed', parsed.data.kind, error)
     return { ok: false, error: modelFailureMessage(error) }
   }
-
-  console.log('artifacts: generated briefing', briefing);
 
   const stored = await createArtifact({
     notebookId: parsed.data.notebookId,
     ownerId,
-    kind: 'briefing',
-    title: briefing.title,
-    content: briefing,
+    kind: parsed.data.kind,
+    title: content.title,
+    content,
   })
+
+  console.log('artifacts: generated', parsed.data.kind, stored)
+
   if (!stored) return { ok: false, error: 'Unbekanntes Notizbuch.' }
 
   revalidatePath(`/notebook/${parsed.data.notebookId}`)
