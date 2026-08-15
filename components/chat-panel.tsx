@@ -36,6 +36,7 @@ import { clearChatAction } from '@/lib/chat-actions'
 import { suggestedQuestions } from '@/lib/data'
 import type { Citation } from '@/lib/db/schema'
 import type { MessageRow } from '@/lib/messages'
+import { createNoteAction } from '@/lib/note-actions'
 
 type ChatMessage = UIMessage<{ citations: Citation[]; omitted?: number }>
 
@@ -65,7 +66,7 @@ function getUserFriendlyErrorMessage(error: Error) {
 }
 
 export function ChatPanel() {
-  const { notebook, sources, history, openSource, addNote } = useNotebookStore()
+  const { notebook, sources, history, openSource } = useNotebookStore()
   const [draft, setDraft] = useState('')
   const [failure, setFailure] = useState<string | null>(null)
   const [clearing, startClearing] = useTransition()
@@ -241,7 +242,8 @@ export function ChatPanel() {
                                   disabled={saving}
                                   onClick={() =>
                                     startSaving(async () => {
-                                      const result = await addNote(
+                                      const result = await createNoteAction(
+                                        notebook.id,
                                         'Aus dem Chat gespeichert',
                                         content,
                                       )

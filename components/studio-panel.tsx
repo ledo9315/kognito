@@ -25,6 +25,11 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@/components/ui/item'
+import {
+  deleteArtifactAction,
+  generateBriefingAction,
+} from '@/lib/artifact-actions'
+import { briefingMeta, readBriefing } from '@/lib/briefing'
 import type { StudioArtifactKind } from '@/lib/data'
 
 const generators: {
@@ -79,24 +84,62 @@ const artifactIcons: Record<
 }
 
 export function StudioPanel() {
-  const { notebook, sources, artifacts, generateArtifact, removeArtifact } =
-    useNotebookStore()
+  const {
+    notebook,
+    sources,
+    artifacts,
+    simulated,
+    simulateArtifact,
+    openArtifact,
+    removeSimulated,
+  } = useNotebookStore()
   const [pending, setPending] = useState<StudioArtifactKind | null>(null)
 
-  const selectedCount = sources.filter((source) => source.selected).length
-  const audioArtifact = artifacts.find((artifact) => artifact.kind === 'audio')
+  const selected = sources.filter((source) => source.selected)
+  const selectedCount = selected.length
+  const audioArtifact = simulated.find((artifact) => artifact.kind === 'audio')
 
   async function generate(kind: StudioArtifactKind) {
+    
     if (selectedCount === 0) {
       toast.error('Keine Quelle ausgewählt', {
         description: 'Wähle mindestens eine Quelle aus.',
       })
       return
     }
+
     setPending(kind)
-    const artifact = await generateArtifact(kind)
+
+    if (kind === 'briefing') {
+      const result = await generateBriefingAction(
+        notebook.id,
+        selected.map((source) => source.id),
+      )
+      setPending(null)
+
+      if (!result.ok) {
+        toast.error('Briefing nicht erstellt', { description: result.error })
+        return
+      }
+
+      openArtifact(result.artifact.id)
+      toast.success(`${result.artifact.title} erstellt`)
+      return
+    }
+
+    // the other five tiles still fake it
+    const artifact = await simulateArtifact(kind)
     setPending(null)
     toast.success(`${artifact.title} erstellt`, { description: artifact.meta })
+  }
+
+  async function remove(artifactId: string, title: string) {
+    const result = await deleteArtifactAction(notebook.id, artifactId)
+    if (result) {
+      toast.error(result.error)
+      return
+    }
+    toast.success(`„${title}“ gelöscht`)
   }
 
   return (
@@ -155,7 +198,7 @@ export function StudioPanel() {
             Ergebnisse
           </h3>
 
-          {artifacts.length === 0 ? (
+          {artifacts.length === 0 && simulated.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs leading-relaxed text-muted-foreground">
               Noch nichts erstellt. Wähle oben ein Format, um aus deinen Quellen
               eine Zusammenfassung, Lernhilfe oder Audio-Übersicht zu erzeugen.
@@ -163,6 +206,51 @@ export function StudioPanel() {
           ) : (
             <div className="flex flex-col gap-2">
               {artifacts.map((artifact) => {
+                const briefing = readBriefing(artifact.content)
+                return (
+                  <Item
+                    key={artifact.id}
+                    variant="outline"
+                    size="sm"
+                    className="cursor-pointer hover:bg-accent/50"
+                    render={
+                      <button
+                        type="button"
+                        onClick={() => openArtifact(artifact.id)}
+                        className="w-full text-left"
+                        aria-label={`${artifact.title} öffnen`}
+                      />
+                    }
+                  >
+                    <ItemMedia variant="icon">
+                      <FileText />
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle>{artifact.title}</ItemTitle>
+                      <ItemDescription>
+                        {briefing
+                          ? briefingMeta(briefing)
+                          : 'Älteres Format, bitte neu erzeugen'}
+                      </ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          void remove(artifact.id, artifact.title)
+                        }}
+                        aria-label={`${artifact.title} löschen`}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </ItemActions>
+                  </Item>
+                )
+              })}
+
+              {simulated.map((artifact) => {
                 const Icon = artifactIcons[artifact.kind]
                 return (
                   <Item key={artifact.id} variant="outline" size="sm">
@@ -177,7 +265,7 @@ export function StudioPanel() {
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        onClick={() => removeArtifact(artifact.id)}
+                        onClick={() => removeSimulated(artifact.id)}
                         aria-label={`${artifact.title} löschen`}
                       >
                         <Trash2 />
