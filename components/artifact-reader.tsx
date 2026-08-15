@@ -1,6 +1,7 @@
 'use client'
 
-import { FileText, HelpCircle, X } from 'lucide-react'
+import type { ComponentType } from 'react'
+import { FileText, HelpCircle, ListOrdered, X } from 'lucide-react'
 import { useNotebookStore } from '@/components/notebook-store'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -8,7 +9,17 @@ import { Separator } from '@/components/ui/separator'
 import { artifactLabels, artifactMeta } from '@/lib/artifact-kinds'
 import { readBriefing, type Briefing } from '@/lib/briefing'
 import { readFaq, type Faq } from '@/lib/faq'
+import { readTimeline, type Timeline } from '@/lib/timeline'
 import type { ArtifactRow } from '@/lib/artifacts'
+
+type ArtifactIcon = ComponentType<{ className?: string }>
+type ArtifactIcons = Record<ArtifactRow['kind'], ArtifactIcon>
+
+const icons = {
+  briefing: FileText,
+  faq: HelpCircle,
+  timeline: ListOrdered,
+} satisfies ArtifactIcons
 
 export function ArtifactReader() {
   const { artifacts, openArtifactId, openArtifact } = useNotebookStore()
@@ -18,7 +29,7 @@ export function ArtifactReader() {
 
   const label = artifactLabels[artifact.kind]
   const meta = artifactMeta(artifact)
-  const Icon = artifact.kind === 'faq' ? HelpCircle : FileText
+  const Icon = icons[artifact.kind]
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-card">
@@ -57,26 +68,28 @@ export function ArtifactReader() {
 
 /** Each kind reads its own content, and says so when it cannot. */
 function Body({ artifact }: { artifact: ArtifactRow }) {
-  const content =
-    artifact.kind === 'faq'
-      ? readFaq(artifact.content)
-      : artifact.kind === 'briefing'
-        ? readBriefing(artifact.content)
-        : null
-
-  if (content === null) {
-    return (
-      <p role="alert" className="text-[13px] leading-relaxed text-muted-foreground">
-        Dieses Artefakt wurde in einem älteren Format gespeichert und kann nicht
-        mehr angezeigt werden. Erzeuge es neu.
-      </p>
-    )
+  switch (artifact.kind) {
+    case 'briefing': {
+      const briefing = readBriefing(artifact.content)
+      return briefing ? <BriefingBody briefing={briefing} /> : <Unreadable />
+    }
+    case 'faq': {
+      const faq = readFaq(artifact.content)
+      return faq ? <FaqBody faq={faq} /> : <Unreadable />
+    }
+    case 'timeline': {
+      const timeline = readTimeline(artifact.content)
+      return timeline ? <TimelineBody timeline={timeline} /> : <Unreadable />
+    }
   }
+}
 
-  return 'entries' in content ? (
-    <FaqBody faq={content} />
-  ) : (
-    <BriefingBody briefing={content} />
+function Unreadable() {
+  return (
+    <p role="alert" className="text-[13px] leading-relaxed text-muted-foreground">
+      Dieses Artefakt wurde in einem älteren Format gespeichert und kann nicht
+      mehr angezeigt werden. Erzeuge es neu.
+    </p>
   )
 }
 
@@ -110,6 +123,40 @@ function FaqBody({ faq }: { faq: Faq }) {
           </div>
         ))}
       </dl>
+    </>
+  )
+}
+
+function TimelineBody({ timeline }: { timeline: Timeline }) {
+  return (
+    <>
+      <GeneratedHeading>Chronologie</GeneratedHeading>
+
+      <ol className="flex flex-col">
+        {timeline.entries.map((entry, index) => (
+          <li key={index} className="flex gap-3">
+            {/* The line runs between the dots, so it belongs to the column,
+                not to the entry. The last one ends without it. */}
+            <div className="flex flex-col items-center">
+              <span
+                aria-hidden="true"
+                className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary"
+              />
+              {index < timeline.entries.length - 1 ? (
+                <span aria-hidden="true" className="w-px flex-1 bg-border" />
+              ) : null}
+            </div>
+            <div className="flex flex-col gap-0.5 pb-4">
+              <span className="text-[11px] font-medium text-muted-foreground">
+                {entry.when}
+              </span>
+              <span className="text-[13px] leading-relaxed text-pretty">
+                {entry.event}
+              </span>
+            </div>
+          </li>
+        ))}
+      </ol>
     </>
   )
 }

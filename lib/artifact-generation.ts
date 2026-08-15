@@ -7,6 +7,13 @@ import { getContextChunks, numberPassages } from '@/lib/context'
 import { getDb, type Database } from '@/lib/db'
 import { createEmbedder, type Embedder } from '@/lib/embeddings'
 import { Faq, faqRules, type Faq as FaqType } from '@/lib/faq'
+import {
+  datedOnly,
+  inTimeOrder,
+  Timeline,
+  timelineRules,
+  type Timeline as TimelineType,
+} from '@/lib/timeline'
 
 /**
  * Turning a selection of sources into an artifact.
@@ -23,6 +30,14 @@ export class NoSourcesError extends Error {
   constructor() {
     super('An artifact without sources would be invented')
     this.name = 'NoSourcesError'
+  }
+}
+
+/** The sources carry no dates, so there is nothing to put on a timeline. */
+export class NoDatesError extends Error {
+  constructor() {
+    super('A timeline without dates would be invented')
+    this.name = 'NoDatesError'
   }
 }
 
@@ -48,6 +63,27 @@ export function generateFaq(
 ): Promise<FaqType> {
   
   return generate(Faq, faqRules, input, options)
+}
+
+export async function generateTimeline(
+  input: Selection,
+  options: GenerationOptions = {},
+): Promise<TimelineType> {
+  const timeline = await generate(Timeline, timelineRules, input, options)
+
+  // The rules ask for points in time and the filter enforces it, because a
+  // rule is a request and a model may read a duration as a date. Not empty
+  // is not the same as usable, so the check has to come after the filter.
+  const entries = datedOnly(timeline.entries)
+
+  // The schema allows an empty list so that a source without dates has a
+  // truthful answer to give. What it must not become is a stored artifact
+  // that only says there is nothing.
+  if (entries.length === 0) throw new NoDatesError()
+
+  // Chronology is decided here, where a test can check it, and not by
+  // asking the model for it.
+  return { ...timeline, entries: inTimeOrder(entries) }
 }
 
 async function generate<T>(

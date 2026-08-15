@@ -7,6 +7,8 @@ import { createArtifact, deleteArtifact, type ArtifactRow } from '@/lib/artifact
 import {
   generateBriefing,
   generateFaq,
+  generateTimeline,
+  NoDatesError,
   NoSourcesError,
 } from '@/lib/artifact-generation'
 import { modelFailureMessage } from '@/lib/chat'
@@ -25,6 +27,7 @@ const Input = z.object({
 const generators: Record<GeneratedKind, (input: { sourceIds: string[]; ownerId: string }) => Promise<{ title: string }>> = {
   briefing: generateBriefing,
   faq: generateFaq,
+  timeline: generateTimeline,
 }
 
 export async function generateArtifactAction(
@@ -53,6 +56,15 @@ export async function generateArtifactAction(
       return {
         ok: false,
         error: 'Die ausgewählten Quellen enthalten keinen lesbaren Text.',
+      }
+    }
+
+    // Nothing is stored in this case. An artifact whose whole content is
+    // the sentence "there was nothing to find" is not worth a row.
+    if (error instanceof NoDatesError) {
+      return {
+        ok: false,
+        error: 'Die ausgewählten Quellen enthalten keine Datumsangaben.',
       }
     }
 

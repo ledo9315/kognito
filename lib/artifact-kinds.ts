@@ -1,6 +1,7 @@
 import { briefingMeta, readBriefing } from '@/lib/briefing'
 import type { ArtifactKind } from '@/lib/db/schema'
 import { faqMeta, readFaq } from '@/lib/faq'
+import { readTimeline, timelineMeta } from '@/lib/timeline'
 
 /**
  * What the two kinds have in common, kept where the browser may read it.
@@ -10,8 +11,8 @@ import { faqMeta, readFaq } from '@/lib/faq'
  * kind they hold.
  */
 
-/** The kinds a tile really generates. The rest still fake it, see #22, #26. */
-export const generatedKinds = ['briefing', 'faq'] as const
+/** The kinds a tile really generates. The rest still fake it, see #26 to #28. */
+export const generatedKinds = ['briefing', 'faq', 'timeline'] as const
 export type GeneratedKind = (typeof generatedKinds)[number]
 
 export function isGenerated(kind: string): kind is GeneratedKind {
@@ -38,7 +39,9 @@ export function artifactMeta(artifact: {
       const faq = readFaq(artifact.content)
       return faq && faqMeta(faq)
     }
-    default:
-      return null
+    case 'timeline': {
+      const timeline = readTimeline(artifact.content)
+      return timeline && timelineMeta(timeline)
+    }
   }
 }

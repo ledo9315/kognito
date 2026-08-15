@@ -1,11 +1,24 @@
 import { MockLanguageModelV4 } from 'ai/test'
 import type { LanguageModel } from 'ai'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { generateBriefing, generateFaq, NoSourcesError } from '@/lib/artifact-generation'
+import {
+  generateBriefing,
+  generateFaq,
+  generateTimeline,
+  NoDatesError,
+  NoSourcesError,
+} from '@/lib/artifact-generation'
 import { artifactMeta } from '@/lib/artifact-kinds'
 import { createArtifact, deleteArtifact, listArtifacts } from '@/lib/artifacts'
 import { Briefing, briefingMeta, readBriefing } from '@/lib/briefing'
 import { Faq, faqMeta, readFaq } from '@/lib/faq'
+import {
+  datedOnly,
+  inTimeOrder,
+  readTimeline,
+  timelineMeta,
+  type Timeline,
+} from '@/lib/timeline'
 import { createTestDb } from '@/lib/db/test-db'
 import { user } from '@/lib/db/schema'
 import { createNotebook } from '@/lib/notebooks'
@@ -53,6 +66,15 @@ const faq = {
       question: 'Wie entstehen Migrationen?',
       answer: 'Migrationen entstehen mit Drizzle.',
     },
+  ],
+}
+
+const timeline = {
+  title: 'Entstehung des Projekts',
+  entries: [
+    { when: 'Frühjahr 2021', sortKey: '2021-03', event: 'Der Prototyp entsteht.' },
+    { when: '2019', sortKey: '2019', event: 'Die Idee wird notiert.' },
+    { when: '3. Mai 2021', sortKey: '2021-05-03', event: 'Die erste Version geht live.' },
   ],
 }
 
@@ -203,6 +225,151 @@ describe('generating an faq', () => {
   })
 })
 
+describe('generating a timeline', () => {
+  async function dated(name: string) {
+    const where = await setUp(name)
+    const source = await createSource(
+      {
+        ...where,
+        title: 'Verlauf',
+        kind: 'text',
+        text: 'Die Idee wird 2019 notiert. Im Frühjahr 2021 entsteht der Prototyp.',
+      },
+      database.db,
+    )
+    return { ...where, sourceId: source!.id }
+  }
+
+  it('puts the events in order, whatever order the model answered in', async () => {
+    const where = await dated('alice')
+    const { model } = mockModel(timeline)
+
+    const generated = await generateTimeline(
+      { sourceIds: [where.sourceId], ownerId: where.ownerId },
+      { model, db: database.db },
+    )
+
+    expect(generated.entries.map((entry) => entry.when)).toEqual([
+      '2019',
+      'Frühjahr 2021',
+      '3. Mai 2021',
+    ])
+  })
+
+  it('refuses to store a timeline when the sources carry no dates', async () => {
+    const where = await dated('alice')
+    // The schema allows this, which is the point: the model can say nothing.
+    const { model } = mockModel({ title: 'Ohne Daten', entries: [] })
+
+    await expect(
+      generateTimeline(
+        { sourceIds: [where.sourceId], ownerId: where.ownerId },
+        { model, db: database.db },
+      ),
+    ).rejects.toBeInstanceOf(NoDatesError)
+  })
+
+  // What a real model answered for a text about grinding coffee: true
+  // sentences, and durations rather than dates.
+  it('refuses a timeline the model built from durations', async () => {
+    const where = await dated('alice')
+    const { model } = mockModel({
+      title: 'Wie eine Kaffeemühle den Geschmack bestimmt',
+      entries: [
+        {
+          when: 'mehrere Minuten im Wasser',
+          sortKey: 'mehrere Minuten',
+          event: 'Eine French Press braucht einen groben Mahlgrad.',
+        },
+        {
+          when: 'nur wenige Sekunden Kontakt',
+          sortKey: 'wenige Sekunden',
+          event: 'Espresso braucht einen feinen Mahlgrad.',
+        },
+      ],
+    })
+
+    await expect(
+      generateTimeline(
+        { sourceIds: [where.sourceId], ownerId: where.ownerId },
+        { model, db: database.db },
+      ),
+    ).rejects.toBeInstanceOf(NoDatesError)
+  })
+
+  it('drops a single undatable entry and keeps the rest', async () => {
+    const where = await dated('alice')
+    const { model } = mockModel({
+      title: 'Gemischt',
+      entries: [
+        { when: 'über Jahrhunderte', sortKey: 'Jahrhunderte', event: 'Dauert lange.' },
+        ...timeline.entries,
+      ],
+    })
+
+    const generated = await generateTimeline(
+      { sourceIds: [where.sourceId], ownerId: where.ownerId },
+      { model, db: database.db },
+    )
+
+    expect(generated.entries).toHaveLength(3)
+    expect(generated.entries.map((entry) => entry.when)).not.toContain(
+      'über Jahrhunderte',
+    )
+  })
+
+  it('does not read the sources of another account', async () => {
+    const hers = await dated('alice')
+    await setUp('bob')
+    const { model } = mockModel(timeline)
+
+    await expect(
+      generateTimeline(
+        { sourceIds: [hers.sourceId], ownerId: 'bob' },
+        { model, db: database.db },
+      ),
+    ).rejects.toBeInstanceOf(NoSourcesError)
+  })
+})
+
+describe('keeping only what is dated', () => {
+  it('accepts a year, a month and a day, and nothing else', () => {
+    const kept = datedOnly([
+      { when: '2021', sortKey: '2021', event: 'Jahr' },
+      { when: 'Mai 2021', sortKey: '2021-05', event: 'Monat' },
+      { when: '3. Mai 2021', sortKey: '2021-05-03', event: 'Tag' },
+      { when: 'mehrere Minuten', sortKey: 'mehrere Minuten', event: 'Dauer' },
+      { when: 'im Sommer', sortKey: 'Sommer', event: 'ohne Jahr' },
+      { when: 'kürzlich', sortKey: '', event: 'leer' },
+      { when: 'Mai 2021', sortKey: '2021-5', event: 'ohne führende Null' },
+    ])
+
+    expect(kept.map((entry) => entry.event)).toEqual(['Jahr', 'Monat', 'Tag'])
+  })
+})
+
+describe('sorting a timeline', () => {
+  it('reads a coarse key as earlier than a finer one in the same period', () => {
+    const order = inTimeOrder([
+      { when: 'Mai 2021', sortKey: '2021-05', event: 'b' },
+      { when: '2021', sortKey: '2021', event: 'a' },
+      { when: '3. Mai 2021', sortKey: '2021-05-03', event: 'c' },
+    ])
+
+    expect(order.map((entry) => entry.event)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('leaves the given entries untouched', () => {
+    const entries = [
+      { when: '2021', sortKey: '2021', event: 'b' },
+      { when: '2019', sortKey: '2019', event: 'a' },
+    ]
+
+    inTimeOrder(entries)
+    expect(entries.map((entry) => entry.event)).toEqual(['b', 'a'])
+  })
+})
+
 describe('storing an artifact', () => {
   it('keeps the content readable as a briefing', async () => {
     const where = await setUp('alice')
@@ -245,7 +412,22 @@ describe('storing an artifact', () => {
     expect(artifactMeta({ kind: 'briefing', content: briefing })).toBe(
       '2 Abschnitte · 3 Punkte',
     )
+    expect(artifactMeta({ kind: 'timeline', content: timeline })).toBe('3 Ereignisse')
     expect(artifactMeta({ kind: 'faq', content: { headline: 'anderes' } })).toBeNull()
+  })
+
+  it('keeps a timeline readable and apart from the other kinds', async () => {
+    const where = await setUp('alice')
+
+    await createArtifact(
+      { ...where, kind: 'timeline', title: timeline.title, content: timeline },
+      database.db,
+    )
+
+    const [row] = await listArtifacts(where.notebookId, where.ownerId, database.db)
+    expect(readTimeline(row.content)).toEqual(timeline)
+    expect(readFaq(row.content)).toBeNull()
+    expect(timelineMeta(timeline as Timeline)).toBe('3 Ereignisse')
   })
 
   it('skips content that does not match the schema', async () => {
