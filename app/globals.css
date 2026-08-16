@@ -125,6 +125,17 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Tailwind v4 sets buttons to the default cursor, which reads as "not
+     clickable" on everything this app is made of. Put back once, here, rather
+     than as a class on every control. Menu items carry cursor-default from
+     shadcn on purpose, that is what a native menu does, so they stay out. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  label[for],
+  summary {
+    cursor: pointer;
+  }
 }
 
 @utility scrollbar-slim {

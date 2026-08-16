@@ -123,7 +123,7 @@ export function AddSourceDialog({
                     className={cn(
                       // Children do not take the pointer, otherwise dragging
                       // across them reads as leaving the zone.
-                      'flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-dashed border-input px-4 py-6 text-center transition-colors hover:border-primary/40 hover:bg-accent/40 peer-focus-visible:border-ring peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 [&_*]:pointer-events-none',
+                      'flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-input px-4 py-6 text-center transition-colors hover:border-primary/40 hover:bg-accent/40 peer-focus-visible:border-ring peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 [&_*]:pointer-events-none',
                       overDropZone && 'border-primary bg-accent',
                     )}
                   >
