@@ -154,7 +154,7 @@ export function StudioPanel() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+      <header className="flex min-h-13 items-center justify-between gap-2 border-b border-border px-4 py-3">
         <h2 className="text-sm font-medium">Studio</h2>
       </header>
 
@@ -209,35 +209,33 @@ export function StudioPanel() {
                     key={artifact.id}
                     variant="outline"
                     size="sm"
-                    className="cursor-pointer hover:bg-accent/50"
-                    render={
-                      <button
-                        type="button"
-                        onClick={() => show(artifact)}
-                        className="w-full text-left"
-                        aria-label={`${artifact.title} öffnen`}
-                      />
-                    }
+                    className="relative cursor-pointer hover:bg-accent/50 focus-within:ring-[3px] focus-within:ring-ring/40"
                   >
                     <ItemMedia variant="icon">
                       <Icon />
                     </ItemMedia>
                     <ItemContent>
-                      <ItemTitle>{artifact.title}</ItemTitle>
+                      <ItemTitle>
+                        <button
+                          type="button"
+                          onClick={() => show(artifact)}
+                          aria-label={`${artifact.title} öffnen`}
+                          className="text-left after:absolute after:inset-0 focus-visible:outline-none"
+                        >
+                          {artifact.title}
+                        </button>
+                      </ItemTitle>
                       <ItemDescription>
                         {meta
                           ? `${artifactLabels[artifact.kind]} · ${meta}`
                           : 'Älteres Format, bitte neu erzeugen'}
                       </ItemDescription>
                     </ItemContent>
-                    <ItemActions>
+                    <ItemActions className="relative z-10">
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          void remove(artifact.id, artifact.title)
-                        }}
+                        onClick={() => void remove(artifact.id, artifact.title)}
                         aria-label={`${artifact.title} löschen`}
                       >
                         <Trash2 />

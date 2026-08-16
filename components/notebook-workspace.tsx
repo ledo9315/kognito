@@ -102,7 +102,9 @@ function Workspace() {
 
         <aside
           className={cn(
-            'shrink-0 overflow-hidden rounded-xl border border-border bg-background transition-all',
+            // no width transition: the reader scrolls to the cited passage on
+            // mount, and an animated width measures the old, narrower layout
+            'shrink-0 overflow-hidden rounded-xl border border-border bg-background',
             readerOpen ? 'w-104' : 'w-80',
           )}
         >
