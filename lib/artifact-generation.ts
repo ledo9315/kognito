@@ -1,5 +1,18 @@
-import { generateText, Output, type LanguageModel } from 'ai'
+import {
+  generateText,
+  Output,
+  type LanguageModel,
+  type SpeechModel,
+} from 'ai'
 import type { z } from 'zod'
+import {
+  AudioScript,
+  audioScriptRules,
+  mergeAudioScripts,
+  splitScript,
+  trimToSentence,
+  type AudioOverview as AudioOverviewType,
+} from '@/lib/audio'
 import {
   Briefing,
   briefingRules,
@@ -7,7 +20,7 @@ import {
   type Briefing as BriefingType,
 } from '@/lib/briefing'
 import { defaultModel } from '@/lib/chat'
-import { maxPromptCharacters } from '@/lib/config'
+import { maxPromptCharacters, maxScriptCharacters } from '@/lib/config'
 import { inReadingOrder, windowPassages } from '@/lib/context'
 import { getDb, type Database } from '@/lib/db'
 import { Faq, faqRules, mergeFaqs, type Faq as FaqType } from '@/lib/faq'
@@ -24,6 +37,7 @@ import {
   withinBounds,
   type Mindmap as MindmapType,
 } from '@/lib/mindmap'
+import { speak } from '@/lib/speech'
 import {
   datedOnly,
   inTimeOrder,
@@ -59,10 +73,46 @@ export class NoDatesError extends Error {
 
 export type GenerationOptions = {
   model?: LanguageModel
+  speechModel?: SpeechModel
   db?: Database
 }
 
 type Selection = { sourceIds: string[]; ownerId: string }
+
+/**
+ * One narrator talking about the selection, not reading it out.
+ *
+ * The script is written the same way every other artifact is written, and
+ * only then spoken. Sending the sources themselves to a speech model would
+ * cost characters by the hundred thousand and produce an audio book instead
+ * of an overview.
+ */
+export async function generateAudio(
+  input: Selection,
+  options: GenerationOptions = {},
+): Promise<AudioOverviewType> {
+  const written = await generate(
+    AudioScript,
+    audioScriptRules,
+    mergeAudioScripts,
+    input,
+    options,
+  )
+
+  const pieces = splitScript(
+    trimToSentence(written.script, maxScriptCharacters),
+  )
+
+  // The prompt asks for a script and the schema asks for a string, so an
+  // empty one means the model gave up on the selection.
+  if (pieces.length === 0) throw new NoSourcesError()
+
+  return {
+    title: written.title,
+    script: pieces.join('\n\n'),
+    pathname: await speak(pieces, options.speechModel),
+  }
+}
 
 export function generateBriefing(
   input: Selection,

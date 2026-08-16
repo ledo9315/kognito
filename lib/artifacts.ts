@@ -69,12 +69,36 @@ export async function createArtifact(
   return row
 }
 
-/** False when the artifact does not exist or belongs to someone else. */
+/** Null when the artifact does not exist or belongs to someone else. */
+export async function findArtifact(
+  id: string,
+  ownerId: string,
+  db: Database = getDb(),
+): Promise<ArtifactRow | null> {
+  const [row] = await db
+    .select()
+    .from(artifact)
+    .where(
+      and(
+        eq(artifact.id, id),
+        inArray(artifact.notebookId, ownedNotebooks(ownerId, db)),
+      ),
+    )
+    .limit(1)
+
+  return row ?? null
+}
+
+/**
+ * The deleted row, or null when the artifact does not exist or belongs to
+ * someone else. The row comes back because an audio overview leaves files
+ * behind that only its content still names.
+ */
 export async function deleteArtifact(
   id: string,
   ownerId: string,
   db: Database = getDb(),
-) {
+): Promise<ArtifactRow | null> {
   const rows = await db
     .delete(artifact)
     .where(
@@ -83,7 +107,7 @@ export async function deleteArtifact(
         inArray(artifact.notebookId, ownedNotebooks(ownerId, db)),
       ),
     )
-    .returning({ id: artifact.id })
+    .returning()
 
-  return rows.length === 1
+  return rows[0] ?? null
 }

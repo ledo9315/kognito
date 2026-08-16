@@ -51,6 +51,30 @@ export const searchResultCount = 48
 export const maxChunksPerSource = 2_000
 
 /* -------------------------------------------------------------------------- */
+/* Speaking about a selection                                                  */
+
+/**
+ * How long an audio overview may get, in characters of script.
+ *
+ * Ten thousand characters are roughly ten minutes. The point of the overview
+ * is that it is shorter than the sources, so this is a ceiling in code and
+ * not only a wish in the prompt: a hundred page thesis becomes an overview,
+ * never an audio book.
+ */
+export const maxScriptCharacters = 10_000
+
+/**
+ * The largest text one synthesis request takes.
+ *
+ * The limit of the speech models is 4096 characters. Below it, because the
+ * script is cut between sentences and the last one has to fit.
+ */
+export const maxSpeechCharacters = 4_000
+
+/** Characters spoken per minute, for the estimate under the title. */
+export const charactersPerSpokenMinute = 1_000
+
+/* -------------------------------------------------------------------------- */
 /* Showing an answer                                                           */
 
 /** How much of a passage a citation tooltip shows, in characters. */

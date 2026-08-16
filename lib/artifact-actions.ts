@@ -2,9 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { generatedKinds, type GeneratedKind } from '@/lib/artifact-kinds'
+import { readAudioOverview } from '@/lib/audio'
 import { createArtifact, deleteArtifact, type ArtifactRow } from '@/lib/artifacts'
 import {
+  generateAudio,
   generateBriefing,
   generateFaq,
   generateFlashcards,
@@ -14,7 +15,9 @@ import {
   NoSourcesError,
 } from '@/lib/artifact-generation'
 import { modelFailureMessage } from '@/lib/chat'
+import { artifactKinds, type ArtifactKind } from '@/lib/db/schema'
 import { requireOwnerId } from '@/lib/session'
+import { forget } from '@/lib/speech'
 
 export type ArtifactState =
   | { ok: true; artifact: ArtifactRow }
@@ -22,11 +25,12 @@ export type ArtifactState =
 
 const Input = z.object({
   notebookId: z.uuid(),
-  kind: z.enum(generatedKinds),
+  kind: z.enum(artifactKinds),
   sourceIds: z.array(z.uuid()).min(1).max(200),
 })
 
-const generators: Record<GeneratedKind, (input: { sourceIds: string[]; ownerId: string }) => Promise<{ title: string }>> = {
+const generators: Record<ArtifactKind, (input: { sourceIds: string[]; ownerId: string }) => Promise<{ title: string }>> = {
+  audio: generateAudio,
   briefing: generateBriefing,
   faq: generateFaq,
   timeline: generateTimeline,
@@ -103,6 +107,12 @@ export async function deleteArtifactAction(
 
   const deleted = await deleteArtifact(artifactId, await requireOwnerId())
   if (!deleted) return { error: 'Unbekanntes Artefakt.' }
+
+  // The row cascades, the mp3 next to it does not.
+  if (deleted.kind === 'audio') {
+    const overview = readAudioOverview(deleted.content)
+    if (overview) await forget(overview.pathname)
+  }
 
   revalidatePath(`/notebook/${notebookId}`)
   return null

@@ -208,6 +208,7 @@ export const message = pgTable(
 )
 
 export const artifactKinds = [
+  'audio',
   'briefing',
   'faq',
   'timeline',
