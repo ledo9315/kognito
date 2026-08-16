@@ -4,7 +4,7 @@ Ein Notizbuch für eigene Quellen. PDFs, Texte und Webseiten hochladen, Fragen d
 
 Gebaut als Bewerbungsprojekt, deshalb ist der Weg Teil des Ergebnisses: jede Änderung hat ein Issue, einen Branch, einen Pull Request und einen grünen CI-Lauf hinter sich.
 
-![Der Arbeitsbereich: Quellen links, Chat mit Belegstellen in der Mitte, Studio rechts](docs/screenshot.png)
+<img width="5088" height="3384" alt="dashboard" src="https://github.com/user-attachments/assets/2faf8a95-93c5-4e3c-975b-17700fada738" />
 
 ## Was es kann
 
