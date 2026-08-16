@@ -8,6 +8,7 @@ import {
   HelpCircle,
   Layers,
   ListOrdered,
+  LoaderCircle,
   Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -36,6 +37,7 @@ import {
   generateArtifactAction,
 } from '@/lib/artifact-actions'
 import { artifactLabels, artifactMeta } from '@/lib/artifact-kinds'
+import { cn } from '@/lib/utils'
 import { readMindmap } from '@/lib/mindmap'
 import type { ArtifactRow } from '@/lib/artifacts'
 import type { ArtifactKind } from '@/lib/db/schema'
@@ -164,25 +166,40 @@ export function StudioPanel() {
             Erzeugen
           </h3>
           <div className="grid grid-cols-2 gap-2">
-            {generators.map(({ kind, label, hint, icon: Icon }) => (
-              <button
-                key={kind}
-                type="button"
-                onClick={() => generate(kind)}
-                disabled={pending !== null}
-                className="flex flex-col items-start gap-2 rounded-xl bg-indigo-100 p-3 text-left transition-colors hover:bg-indigo-200/70 focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
-              >
-                <span className="rounded-md bg-primary p-2 text-primary-foreground">
-                  <Icon className="size-4" aria-hidden="true" />
-                </span>
-                <span className="text-[13px] leading-tight font-medium">
-                  {pending === kind ? 'Wird erstellt…' : label}
-                </span>
-                <span className="text-[11px] leading-tight text-gray-600">
-                  {hint}
-                </span>
-              </button>
-            ))}
+            {generators.map(({ kind, label, hint, icon: Icon }) => {
+              const busy = pending === kind
+              return (
+                <button
+                  key={kind}
+                  type="button"
+                  onClick={() => generate(kind)}
+                  disabled={pending !== null}
+                  aria-busy={busy}
+                  className={cn(
+                    'flex flex-col items-start gap-2 rounded-xl bg-indigo-100 p-3 text-left transition-colors hover:bg-indigo-200/70 focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none disabled:pointer-events-none',
+                    // The card that is working stays lit, the others step back.
+                    busy ? 'bg-indigo-200/70' : 'disabled:opacity-50',
+                  )}
+                >
+                  <span className="rounded-md bg-primary p-2 text-primary-foreground">
+                    {busy ? (
+                      <LoaderCircle
+                        className="size-4 animate-spin"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <Icon className="size-4" aria-hidden="true" />
+                    )}
+                  </span>
+                  <span className="text-[13px] leading-tight font-medium">
+                    {busy ? 'Wird erstellt…' : label}
+                  </span>
+                  <span className="text-[11px] leading-tight text-gray-600">
+                    {hint}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </section>
 
