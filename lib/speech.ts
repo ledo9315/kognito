@@ -56,13 +56,33 @@ export async function speak(
     ),
   )
 
+  // The only caller refuses an empty script before it gets here, so this
+  // says out loud what the next line already assumes.
+  if (spoken.length === 0) {
+    throw new Error('No speech pieces provided')
+  }
+
+  const mediaType = spoken[0].mediaType
+
+  // Belt and braces: the Blob constructor already copies exactly the bytes a
+  // typed array view spans, offset included. Spelling the copy out costs
+  // nothing and does not depend on that reading.
+  const blobParts: BlobPart[] = spoken.map((audio) => {
+    const bytes = audio.uint8Array
+    const start = bytes.byteOffset
+    const end = start + bytes.byteLength
+
+    if (bytes.buffer instanceof ArrayBuffer) {
+      return bytes.buffer.slice(start, end)
+    }
+
+    return new Uint8Array(bytes).buffer
+  })
+
   const { pathname } = await put(
     `audio/${crypto.randomUUID()}.mp3`,
-    new Blob(
-      spoken.map((audio) => audio.uint8Array),
-      { type: spoken[0].mediaType },
-    ),
-    { access: 'private', contentType: spoken[0].mediaType },
+    new Blob(blobParts, { type: mediaType }),
+    { access: 'private', contentType: mediaType },
   )
 
   return pathname

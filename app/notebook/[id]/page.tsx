@@ -1,10 +1,10 @@
 import { notFound } from 'next/navigation'
-import { NotebookWorkspace } from '@/components/notebook-workspace'
-import { listArtifacts } from '@/lib/artifacts'
-import { listMessages } from '@/lib/messages'
-import { findNotebook } from '@/lib/notebooks'
+import { NotebookWorkspace } from '@/features/notebooks/components/notebook-workspace'
+import { listArtifacts } from '@/features/artifacts/artifacts'
+import { listMessages } from '@/features/chat/messages'
+import { findNotebook } from '@/features/notebooks/notebooks'
 import { requireSession } from '@/lib/session'
-import { listSources } from '@/lib/sources'
+import { listSources } from '@/features/sources/sources'
 
 export const dynamic = 'force-dynamic'
 

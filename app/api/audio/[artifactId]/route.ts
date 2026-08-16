@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { findArtifact } from '@/lib/artifacts'
-import { readAudioOverview } from '@/lib/audio'
+import { findArtifact } from '@/features/artifacts/artifacts'
+import { readAudioOverview } from '@/features/artifacts/audio'
 import { getSession } from '@/lib/session'
 import { presignAudio } from '@/lib/speech'
 

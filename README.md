@@ -58,7 +58,7 @@ Eine hochgeladene Datei wird ausgelesen, in Passagen von 500 bis 1000 Zeichen mi
 
 Solange die gewählten Quellen zusammen unter 120.000 Zeichen bleiben, geht ihr gesamter Text in den Prompt. Kein Suchen, kein Sortieren nach Ähnlichkeit, keine Passage, die verloren geht, weil ein Suchverfahren sie für nebensächlich hielt.
 
-Darüber schaltet `getContextChunks` in `lib/context.ts` auf Suche um: Passagen werden eingebettet, nach Kosinusabstand zur Frage geholt und in Lesereihenfolge an das Modell übergeben. Beides liegt hinter derselben Funktion, aufrufender Code merkt vom Wechsel nichts.
+Darüber schaltet `getContextChunks` in `features/chat/context.ts` auf Suche um: Passagen werden eingebettet, nach Kosinusabstand zur Frage geholt und in Lesereihenfolge an das Modell übergeben. Beides liegt hinter derselben Funktion, aufrufender Code merkt vom Wechsel nichts.
 
 Das Modell zitiert mit Nummern, die auf die übergebenen Passagen zeigen. Beim Auflösen werden Nummern verworfen, die es sich ausgedacht hat.
 
@@ -90,10 +90,18 @@ Die Audiodateien liegen in einem privaten Blob-Store. Gespeichert wird nur ihr P
 
 Geschrieben wird über Server Actions. Eigene Routen gibt es nur zwei: `/api/chat` streamt die Antwort, `/api/audio/[artifactId]` liefert eine Datei aus.
 
+Die Ordner trennen danach, was die Anwendung kann, und was sie dafür benutzt. `features/` beantwortet die erste Frage, `lib/` die zweite.
+
 ```
 app/            Seiten, Layouts und die beiden Routen
-components/     Oberfläche, ui/ enthält die shadcn-Bausteine
-lib/            Fachlogik: Quellen, Chat, Artefakte, Sprache, Sitzung
+features/       Fachbereiche, je mit Logik, Actions, Tests und components/
+  sources/      Hochladen, Extrahieren, Zerlegen, Notizen
+  chat/         Kontext, Antwort, Zitate, Folgefragen
+  artifacts/    Briefing, FAQ, Karteikarten, Zeitstrahl, Mindmap, Audio
+  notebooks/    Notizbücher, Arbeitsfläche, gemeinsamer Zustand
+components/     Oberfläche ohne Fachbereich, ui/ enthält die shadcn-Bausteine
+lib/            Technische Grundlage: Datenbank, Auth, Sitzung, Embeddings,
+                Konfiguration, Sprachsynthese
 lib/db/         Schema, Migrationen, Testdatenbank
 e2e/            Playwright-Specs
 ```

@@ -5,7 +5,8 @@ import {
   type UIMessage,
 } from 'ai'
 import { z } from 'zod'
-import { ChatError, modelFailureMessage, streamAnswer } from '@/lib/chat'
+import { ChatError, streamAnswer } from '@/features/chat/chat'
+import { modelFailureMessage } from '@/lib/model'
 import type { Citation } from '@/lib/db/schema'
 import { getSession } from '@/lib/session'
 
