@@ -33,7 +33,7 @@ export function SourcesPanel() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+      <header className="flex min-h-13 items-center justify-between gap-2 border-b border-border px-4 py-3">
         <h2 className="text-sm font-medium">Quellen</h2>
         <AddSourceDialog
           notebookId={notebook.id}
@@ -160,6 +160,7 @@ export function SourcesPanel() {
                             <input type="hidden" name="notebookId" value={notebook.id} />
                             <DropdownMenuItem
                               variant="destructive"
+                              nativeButton
                               render={<button type="submit" className="w-full" />}
                             >
                               <Trash2 />
