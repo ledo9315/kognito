@@ -107,7 +107,7 @@ export function ChatPanel() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+      <header className="flex min-h-13 items-center justify-between gap-2 border-b border-border px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
           <h2 className="text-sm font-medium">Chat</h2>
           <Badge variant="secondary" className="font-normal">
