@@ -27,8 +27,12 @@ export default function RootLayout({
   children: ReactNode
 }>) {
   return (
+    // Browser extensions write their own attributes onto <html> before React
+    // hydrates, a translator leaves trancy-version there. The mismatch is
+    // theirs, and the suppression covers this element's attributes only.
     <html
       lang="de"
+      suppressHydrationWarning
       className={`bg-background ${inter.variable} ${urbanist.variable} ${geistMono.variable}`}
     >
       <body className="font-sans antialiased">

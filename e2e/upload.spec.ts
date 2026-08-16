@@ -4,7 +4,7 @@ import { createNotebook } from './helpers'
 test('uploading a pdf stores a readable source', async ({ page }) => {
   await createNotebook(page, `Upload ${Date.now()}`)
 
-  await page.getByRole('button', { name: 'Hinzufügen' }).click()
+  await page.getByRole('button', { name: 'Hinzufügen', exact: true }).click()
   await page.getByLabel('Datei auswählen').setInputFiles('lib/fixtures/sample.pdf')
   await page.getByRole('button', { name: 'Hochladen' }).click()
 
@@ -28,7 +28,7 @@ test('uploading a pdf stores a readable source', async ({ page }) => {
 test('a pdf without a text layer is refused with a reason', async ({ page }) => {
   await createNotebook(page, `Scan ${Date.now()}`)
 
-  await page.getByRole('button', { name: 'Hinzufügen' }).click()
+  await page.getByRole('button', { name: 'Hinzufügen', exact: true }).click()
   await page.getByLabel('Datei auswählen').setInputFiles('lib/fixtures/scanned.pdf')
   await page.getByRole('button', { name: 'Hochladen' }).click()
 

@@ -114,13 +114,22 @@ function Workspace() {
 
       {/* Mobile / tablet: tabs */}
       <div className="flex min-h-0 flex-1 flex-col lg:hidden">
+        {/* The reader covers whichever tab is open. Tapping a source in the
+            sources tab used to mark it as open and show nothing, because the
+            reader only lived in the chat tab. */}
         <div className="min-h-0 flex-1 overflow-hidden bg-background">
-          {mobileTab === 'sources' && <SourcesPanel />}
-          {mobileTab === 'chat' && (readerOpen ? reader : <ChatPanel />)}
-          {mobileTab === 'studio' && <StudioPanel />}
+          {readerOpen ? (
+            reader
+          ) : (
+            <>
+              {mobileTab === 'sources' && <SourcesPanel />}
+              {mobileTab === 'chat' && <ChatPanel />}
+              {mobileTab === 'studio' && <StudioPanel />}
+            </>
+          )}
         </div>
 
-        <nav className="flex shrink-0 justify-center border-t border-border bg-background px-3 py-2">
+        <nav className="flex shrink-0 justify-center border-t border-border bg-background px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <ToggleGroup
             variant="outline"
             size="sm"

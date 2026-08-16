@@ -123,7 +123,7 @@ export function NotebookGrid({ notebooks }: { notebooks: NotebookCard[] }) {
             trigger={
               <button
                 type="button"
-                className="group flex min-h-40 flex-col items-start justify-between rounded-xl border border-dashed border-border bg-transparent p-5 text-left transition-colors hover:border-primary/40 hover:bg-accent/40 focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none"
+                className="group flex flex-col items-start justify-between gap-4 rounded-xl border border-dashed sm:gap-6 border-border bg-transparent p-5 text-left transition-colors hover:border-primary/40 hover:bg-accent/40 focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none sm:min-h-40"
               >
                 <span className="flex size-9 items-center justify-center rounded-lg bg-secondary text-secondary-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                   <Plus className="size-4" aria-hidden="true" />
@@ -143,7 +143,7 @@ export function NotebookGrid({ notebooks }: { notebooks: NotebookCard[] }) {
           {filteredNotebooks.map((notebook) => (
             <div
               key={notebook.id}
-              className="group relative flex min-h-40 flex-col justify-between rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/30 hover:shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)] focus-within:ring-[3px] focus-within:ring-ring/40"
+              className="group relative flex flex-col justify-between gap-4 rounded-xl border border-border sm:gap-6 bg-card p-5 transition-all sm:min-h-40 hover:border-primary/30 hover:shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)] focus-within:ring-[3px] focus-within:ring-ring/40"
             >
               <NotebookEmoji
                 notebookId={notebook.id}
@@ -212,17 +212,6 @@ export function NotebookGrid({ notebooks }: { notebooks: NotebookCard[] }) {
           ))}
         </div>
       )}
-
-      <div className="flex justify-center pt-2 sm:hidden">
-        <NewNotebookDialog
-          trigger={
-            <Button>
-              <Plus data-icon="inline-start" />
-              Neues Notizbuch
-            </Button>
-          }
-        />
-      </div>
     </div>
   )
 }

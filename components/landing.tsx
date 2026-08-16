@@ -16,67 +16,49 @@ import {
 } from 'lucide-react'
 import { AppLogo } from '@/components/app-logo'
 import { SmoothScroll } from '@/components/smooth-scroll'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import dashboard from '@/public/dashboard.webp'
 
-/**
- * The one place in the project where a colour is picked by hand instead of
- * taken from the theme: six cards that have to stay apart from each other.
- */
 const features: {
   title: string
   description: string
   icon: ComponentType<{ className?: string }>
-  cardBackground: string
-  iconBackground: string
 }[] = [
   {
     title: 'Quellen an einem Ort',
     description:
       'PDFs, Textdateien und eingefügte Ausschnitte landen in einem Notizbuch. Kognito liest alles und behält, wo etwas steht.',
     icon: Upload,
-    cardBackground: 'bg-orange-100',
-    iconBackground: 'bg-orange-500',
   },
   {
     title: 'Antworten mit Belegstelle',
     description:
       'Jede Aussage trägt eine Nummer. Ein Klick darauf springt in die Quelle und markiert den Satz, auf dem sie beruht.',
     icon: MessageSquareQuote,
-    cardBackground: 'bg-green-100',
-    iconBackground: 'bg-green-600',
   },
   {
     title: 'Audio-Übersicht',
     description:
       'Ein Erzähler fasst die ausgewählten Quellen zusammen. Zum Hören, während du etwas anderes machst.',
     icon: AudioLines,
-    cardBackground: 'bg-indigo-100',
-    iconBackground: 'bg-indigo-500',
   },
   {
     title: 'Briefing, FAQ und Zeitleiste',
     description:
       'Aus denselben Quellen entsteht eine strukturierte Zusammenfassung, ein Frage-Antwort-Satz oder eine Chronologie.',
     icon: FileText,
-    cardBackground: 'bg-pink-100',
-    iconBackground: 'bg-pink-500',
   },
   {
     title: 'Mindmap und Lernkarten',
     description:
       'Themen und ihre Verzweigungen als Karte, und eine Abfrage für alles, was hängen bleiben soll.',
     icon: GitBranch,
-    cardBackground: 'bg-lime-100',
-    iconBackground: 'bg-lime-600',
   },
   {
     title: 'Notizen als Quelle',
     description:
       'Was du selbst schreibst, zählt wie eine hochgeladene Datei: durchsuchbar, zitierbar, Teil der nächsten Antwort.',
     icon: NotebookPen,
-    cardBackground: 'bg-sky-100',
-    iconBackground: 'bg-sky-500',
   },
 ]
 
@@ -177,10 +159,12 @@ export function Landing() {
       <nav
         className={`sticky top-0 z-50 border-b border-border bg-white/80 py-4 backdrop-blur ${pagePadding}`}
       >
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
+        <div className="relative mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
           <AppLogo />
 
-          <div className="hidden items-center gap-1 text-sm md:flex">
+          {/* Out of the flow, so the links sit in the middle of the page
+              instead of in the gap the logo and the buttons leave. */}
+          <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 text-sm md:flex">
             <a href="#funktionen" className="px-3 py-1 hover:text-primary">
               Funktionen
             </a>
@@ -193,12 +177,14 @@ export function Landing() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" render={<Link href="/sign-in" />} nativeButton={false}>
+            {/* Links, not buttons: Base UI stamps role="button" on whatever
+                it renders, and these navigate. */}
+            <Link href="/sign-in" className={buttonVariants({ variant: 'ghost' })}>
               Anmelden
-            </Button>
-            <Button size="lg" render={<Link href="/sign-up" />} nativeButton={false}>
+            </Link>
+            <Link href="/sign-up" className={buttonVariants({ size: 'lg' })}>
               Kostenlos starten
-            </Button>
+            </Link>
           </div>
         </div>
       </nav>
@@ -222,21 +208,26 @@ export function Landing() {
           </p>
 
           <div className="mt-8 flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row">
-            <Button
-              size="lg"
-              className="h-11 w-full px-8 text-[15px] sm:w-auto"
-              render={<Link href="/sign-up" />} nativeButton={false}
+            <Link
+              href="/sign-up"
+              className={buttonVariants({
+                size: 'lg',
+                className: 'h-11 w-full px-8 text-[15px] sm:w-auto',
+              })}
             >
               Notizbuch anlegen
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="h-11 w-full border-white bg-white px-8 text-[15px] shadow-[0_2px_12px_rgb(0_0_0/0.06)] hover:bg-gray-50 sm:w-auto"
-              render={<Link href="/sign-in" />} nativeButton={false}
+            </Link>
+            <Link
+              href="/sign-in"
+              className={buttonVariants({
+                variant: 'outline',
+                size: 'lg',
+                className:
+                  'h-11 w-full border-white bg-white px-8 text-[15px] shadow-[0_2px_12px_rgb(0_0_0/0.06)] hover:bg-gray-50 sm:w-auto',
+              })}
             >
               Ich habe schon ein Konto
-            </Button>
+            </Link>
           </div>
 
           <Image
@@ -280,10 +271,10 @@ export function Landing() {
                 key={feature.title}
                 // Each card sticks under the navbar, so the next one slides
                 // over it and they end up stacked, like the reference site.
-                className={`flex flex-col items-start rounded-xl p-6 md:sticky md:top-24 ${feature.cardBackground}`}
+                className="flex flex-col items-start rounded-xl bg-indigo-100 p-6 md:sticky md:top-24"
               >
                 <span
-                  className={`rounded-md p-2 text-white ${feature.iconBackground}`}
+                  className="rounded-md bg-primary p-2 text-primary-foreground"
                 >
                   <feature.icon className="size-6" aria-hidden="true" />
                 </span>
