@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
+  GitBranch,
   HelpCircle,
   Layers,
   ListOrdered,
@@ -29,6 +30,7 @@ const icons = {
   faq: HelpCircle,
   timeline: ListOrdered,
   flashcards: Layers,
+  mindmap: GitBranch,
 } satisfies ArtifactIcons
 
 export function ArtifactReader() {
@@ -101,6 +103,11 @@ function Body({ artifact }: { artifact: ArtifactRow }) {
         <Unreadable />
       )
     }
+    // A mindmap does not fit a panel this narrow and opens in a dialog from
+    // the studio instead, see components/studio-panel.tsx. Listed here so the
+    // switch stays exhaustive and a sixth kind is a type error.
+    case 'mindmap':
+      return null
   }
 }
 

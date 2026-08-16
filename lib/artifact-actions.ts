@@ -8,6 +8,7 @@ import {
   generateBriefing,
   generateFaq,
   generateFlashcards,
+  generateMindmap,
   generateTimeline,
   NoDatesError,
   NoSourcesError,
@@ -30,6 +31,7 @@ const generators: Record<GeneratedKind, (input: { sourceIds: string[]; ownerId: 
   faq: generateFaq,
   timeline: generateTimeline,
   flashcards: generateFlashcards,
+  mindmap: generateMindmap,
 }
 
 export async function generateArtifactAction(

@@ -5,6 +5,7 @@ import {
   generateBriefing,
   generateFaq,
   generateFlashcards,
+  generateMindmap,
   generateTimeline,
   NoDatesError,
   NoSourcesError,
@@ -20,6 +21,15 @@ import {
   mergeFlashcards,
   readFlashcards,
 } from '@/lib/flashcards'
+import {
+  mergeMindmaps,
+  mermaidLabel,
+  Mindmap,
+  mindmapMeta,
+  readMindmap,
+  toMermaid,
+  withinBounds,
+} from '@/lib/mindmap'
 import {
   datedOnly,
   inTimeOrder,
@@ -69,6 +79,23 @@ const flashcards = {
   cards: [
     { front: 'Welche Datenbank kommt zum Einsatz?', back: 'Neon Postgres.' },
     { front: 'Womit entstehen die Migrationen?', back: 'Mit Drizzle.' },
+  ],
+}
+
+const mindmap = {
+  title: 'Architektur im Überblick',
+  branches: [
+    {
+      label: 'Datenhaltung',
+      children: [
+        { label: 'Neon Postgres', children: ['serverless', 'Branch pro Lauf'] },
+        { label: 'Drizzle', children: ['Migrationen'] },
+      ],
+    },
+    {
+      label: 'Auslieferung',
+      children: [{ label: 'Vercel', children: [] }],
+    },
   ],
 }
 
@@ -305,6 +332,144 @@ describe('generating flashcards', () => {
   })
 })
 
+describe('generating a mindmap', () => {
+  it('returns a map that matches the schema, asked to sort and not to summarise', async () => {
+    const where = await setUp('alice')
+    const source = await createSource(
+      {
+        ...where,
+        title: 'Architektur',
+        kind: 'text',
+        text: 'Als Datenbank dient Neon Postgres. Ausgeliefert wird über Vercel.',
+      },
+      database.db,
+    )
+    const { model, seen } = mockModel(mindmap)
+
+    const generated = await generateMindmap(
+      { sourceIds: [source!.id], ownerId: where.ownerId },
+      { model, db: database.db },
+    )
+
+    expect(Mindmap.safeParse(generated).success).toBe(true)
+    expect(generated.branches).toHaveLength(2)
+    expect(textOf(seen.prompt)).toContain('Als Datenbank dient Neon Postgres.')
+    // The rule that keeps a label a label instead of a sentence.
+    expect(textOf(seen.prompt)).toContain('Eine Mindmap gliedert, sie fasst nicht zusammen.')
+  })
+
+  it('refuses a selection without readable text', async () => {
+    const where = await setUp('alice')
+    const { model } = mockModel(mindmap)
+
+    await expect(
+      generateMindmap({ sourceIds: [], ownerId: where.ownerId }, { model, db: database.db }),
+    ).rejects.toBeInstanceOf(NoSourcesError)
+  })
+
+  it('does not read the sources of another account', async () => {
+    const hers = await setUp('alice')
+    await setUp('bob')
+    const source = await createSource(
+      { ...hers, title: 'Privat', kind: 'text', text: 'Vertraulicher Text.' },
+      database.db,
+    )
+    const { model } = mockModel(mindmap)
+
+    await expect(
+      generateMindmap({ sourceIds: [source!.id], ownerId: 'bob' }, { model, db: database.db }),
+    ).rejects.toBeInstanceOf(NoSourcesError)
+  })
+
+  it('cuts a map the model made too large down to a drawable size', async () => {
+    const where = await setUp('alice')
+    const source = await createSource(
+      { ...where, title: 'Datenbanken', kind: 'text', text: 'Ein langer Text.' },
+      database.db,
+    )
+    // The shape of a real run that kept every rule and still came back with
+    // 82 nodes: eight topics, six subtopics each, four keywords under each.
+    const { model } = mockModel({
+      title: 'Zu viel',
+      branches: [...Array(8).keys()].map((topic) => ({
+        label: `Thema ${topic}`,
+        children: [...Array(6).keys()].map((sub) => ({
+          label: `Unterthema ${topic}.${sub}`,
+          children: ['eins', 'zwei', 'drei', 'vier'],
+        })),
+      })),
+    })
+
+    const generated = await generateMindmap(
+      { sourceIds: [source!.id], ownerId: where.ownerId },
+      { model, db: database.db },
+    )
+
+    expect(generated.branches).toHaveLength(6)
+    expect(generated.branches[0].children).toHaveLength(3)
+    expect(generated.branches[0].children[0].children).toEqual(['eins', 'zwei'])
+    // 6 topics, 3 subtopics each, 2 keywords under each.
+    expect(mindmapMeta(generated)).toBe('6 Themen · 54 Knoten')
+  })
+
+  it('leaves a map that is already small enough alone', () => {
+    expect(withinBounds(mindmap as Mindmap)).toEqual(mindmap)
+  })
+
+  it('reads a stored map back and rejects one that lost its branches', () => {
+    expect(readMindmap(mindmap)).toEqual(mindmap)
+    expect(readMindmap({ title: 'Ohne Äste' })).toBeNull()
+    expect(readMindmap(briefing)).toBeNull()
+  })
+})
+
+describe('writing a mindmap in mermaid syntax', () => {
+  it('nests by indentation and gives every node an id of its own', () => {
+    expect(toMermaid(mindmap as Mindmap)).toBe(
+      [
+        'mindmap',
+        '  root((Architektur im Überblick))',
+        '    n1[Datenhaltung]',
+        '      n2[Neon Postgres]',
+        '        n3[serverless]',
+        '        n4[Branch pro Lauf]',
+        '      n5[Drizzle]',
+        '        n6[Migrationen]',
+        '    n7[Auslieferung]',
+        '      n8[Vercel]',
+      ].join('\n'),
+    )
+  })
+
+  it('removes what would end a node early instead of escaping it', () => {
+    // A label a model wrote from a document nobody here controls.
+    expect(mermaidLabel('Chunking (500 bis 1000 Zeichen)')).toBe(
+      'Chunking 500 bis 1000 Zeichen',
+    )
+    expect(mermaidLabel('Feld  "kind"\nim Schema')).toBe('Feld kind im Schema')
+    expect(mermaidLabel('Liste [1]')).toBe('Liste 1')
+  })
+
+  it('drops a node whose label is nothing but delimiters, and its children', () => {
+    const written = toMermaid({
+      title: 'Rest',
+      branches: [
+        { label: '[]', children: [{ label: 'Verschwindet mit', children: ['auch das'] }] },
+        { label: 'Bleibt', children: [] },
+      ],
+    } as Mindmap)
+
+    expect(written).not.toContain('Verschwindet mit')
+    expect(written).toContain('n1[Bleibt]')
+  })
+
+  it('falls back to a title when the title itself cleans up to nothing', () => {
+    expect(toMermaid({ title: '(())', branches: [] } as Mindmap)).toBe(
+      'mindmap\n  root((Mindmap))',
+    )
+  })
+})
+
 describe('generating a timeline', () => {
   async function dated(name: string) {
     const where = await setUp(name)
@@ -494,6 +659,9 @@ describe('storing an artifact', () => {
     )
     expect(artifactMeta({ kind: 'timeline', content: timeline })).toBe('3 Ereignisse')
     expect(artifactMeta({ kind: 'flashcards', content: flashcards })).toBe('2 Karten')
+    expect(artifactMeta({ kind: 'mindmap', content: mindmap })).toBe(
+      '2 Themen · 6 Knoten',
+    )
     expect(artifactMeta({ kind: 'faq', content: { headline: 'anderes' } })).toBeNull()
   })
 
@@ -573,6 +741,9 @@ describe('the meta line', () => {
     expect(
       flashcardsMeta({ ...flashcards, cards: [flashcards.cards[0]] } as Flashcards),
     ).toBe('1 Karte')
+    expect(
+      mindmapMeta({ ...mindmap, branches: [mindmap.branches[1]] } as Mindmap),
+    ).toBe('1 Thema · 1 Knoten')
   })
 })
 
@@ -748,6 +919,56 @@ describe('merging the answers of several windows', () => {
     expect(merged.cards).toHaveLength(flashcards.cards.length + 1)
     expect(merged.cards.at(-1)?.front).toBe('Wer betreibt das?')
     expect(merged.title).toBe(flashcards.title)
+  })
+
+  it('hangs the children of both windows under a branch they both saw', () => {
+    const merged = mergeMindmaps([
+      mindmap as Mindmap,
+      {
+        title: 'Zweite Hälfte',
+        branches: [
+          {
+            // Same branch, spelled differently, with one known and one new child.
+            label: 'DATENHALTUNG',
+            children: [
+              { label: 'Neon Postgres', children: ['serverless', 'pgvector'] },
+              { label: 'Backups', children: [] },
+            ],
+          },
+          { label: 'Tests', children: [] },
+        ],
+      },
+    ])
+
+    expect(merged.branches.map((branch) => branch.label)).toEqual([
+      'Datenhaltung',
+      'Auslieferung',
+      'Tests',
+    ])
+
+    const datenhaltung = merged.branches[0]
+    expect(datenhaltung.children.map((child) => child.label)).toEqual([
+      'Neon Postgres',
+      'Drizzle',
+      'Backups',
+    ])
+    expect(datenhaltung.children[0].children).toEqual([
+      'serverless',
+      'Branch pro Lauf',
+      'pgvector',
+    ])
+    expect(merged.title).toBe(mindmap.title)
+  })
+
+  it('leaves the maps it was given untouched', () => {
+    const before = JSON.stringify(mindmap)
+
+    mergeMindmaps([
+      mindmap as Mindmap,
+      { title: 'Zweite', branches: [{ label: 'Datenhaltung', children: [] }] },
+    ])
+
+    expect(JSON.stringify(mindmap)).toBe(before)
   })
 
   it('drops the event two windows both saw and keeps two events of one day', () => {
