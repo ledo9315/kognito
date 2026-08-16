@@ -1,6 +1,13 @@
 'use client'
 
-import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useReducer,
+  useState,
+  type ReactNode,
+} from 'react'
 import { toast } from 'sonner'
 import type { ArtifactRow } from '@/lib/artifacts'
 import {
@@ -142,6 +149,25 @@ export function NotebookStoreProvider({
   }, [notebook, merged, history, artifacts, state])
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
+}
+
+/**
+ * Lets the reader play its closing animation before it is taken down.
+ *
+ * The panel is only mounted while the store holds an open source or artifact,
+ * so clearing the store first would cut the animation off at its first frame.
+ * The delay is the length of the animation in the class list, both are 200ms.
+ */
+export function useClosingReader(close: () => void) {
+  const [closing, setClosing] = useState(false)
+
+  return {
+    closing,
+    startClosing: () => {
+      setClosing(true)
+      setTimeout(close, 200)
+    },
+  }
 }
 
 export function useNotebookStore() {
