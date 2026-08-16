@@ -2,115 +2,140 @@
 
 Ein Notizbuch für eigene Quellen. PDFs, Texte und Webseiten hochladen, Fragen dazu stellen, und jede Aussage der Antwort trägt eine Belegstelle, die zurück in den Quelltext springt. Dazu ein Studio, das aus derselben Auswahl ein Briefing, ein FAQ, eine Zeitleiste, eine Mindmap, Lernkarten oder eine gesprochene Übersicht erzeugt.
 
-Gebaut als Bewerbungsprojekt, deshalb ist der Weg Teil des Ergebnisses: jede Änderung hat ein Issue, einen Branch, einen Pull Request und einen grünen CI-Lauf hinter sich.
+[![CI](https://github.com/ledo9315/kognito/actions/workflows/ci.yml/badge.svg)](https://github.com/ledo9315/kognito/actions/workflows/ci.yml)
 
 <img width="5088" height="3384" alt="dashboard" src="https://github.com/user-attachments/assets/2faf8a95-93c5-4e3c-975b-17700fada738" />
 
-## Was es kann
+## Funktionen
 
-- **Quellen**: PDF, TXT und Markdown als Datei, Webseiten über die Adresse, eingefügter Text, und Notizen, die in der App selbst entstehen.
-- **Chat mit Belegen**: Jede Antwort verweist auf nummerierte Passagen. Ein Klick öffnet die Quelle an genau der Stelle.
-- **Auswahl**: Beantwortet wird nur aus den Quellen, die angehakt sind. Die Auswahl gilt auch für das Studio.
-- **Studio**: sechs Artefaktarten aus der Auswahl, gespeichert und wieder aufrufbar.
-- **Konten**: E-Mail mit Passwort oder Google. Alles, was einem Konto gehört, hängt an der Notizbuch-Zeile und wird bei jeder Abfrage nach der Besitzer-Id gefiltert.
+- **Quellen** als PDF, TXT und Markdown, über eine Webadresse, als eingefügter Text oder als Notiz, die in der App selbst entsteht.
+- **Chat mit Belegen.** Jede Antwort verweist auf nummerierte Passagen, ein Klick öffnet die Quelle an genau der Stelle.
+- **Auswahl.** Beantwortet wird nur aus den Quellen, die angehakt sind. Dieselbe Auswahl gilt für das Studio.
+- **Studio** mit sechs Formaten aus derselben Auswahl: Audio-Übersicht, Briefing, FAQ, Zeitleiste, Mindmap und Lernkarten, gespeichert und jederzeit wieder aufrufbar.
+- **Notizen**, die wie jede andere Quelle zitiert und durchsucht werden können.
+- **Konten** mit E-Mail und Passwort oder über Google.
 
-## Architektur
+## Schnellstart
 
-Next.js 16 mit dem App Router, React 19, Tailwind 4 und shadcn/ui auf Base UI. Die Daten liegen in Neon Postgres mit pgvector, angesprochen über Drizzle. Better Auth macht die Konten. Alle Modellaufrufe laufen über das AI SDK gegen das Vercel AI Gateway, die Audiodateien liegen in Vercel Blob.
-
-Geschrieben wird über Server Actions. Eigene Routen gibt es nur zweimal, und beide Male aus einem Grund: `/api/chat` streamt, `/api/audio/[artifactId]` liefert eine Datei aus.
-
-Autorisierung passiert serverseitig. `proxy.ts`, der Nachfolger von `middleware.ts`, prüft nur optimistisch das Cookie und trifft keine Entscheidung. Die echte Prüfung steht in `lib/session.ts` und wird von jeder Seite und jeder Action aufgerufen, die Nutzerdaten anfasst.
-
-Eine Notiz ist keine eigene Tabelle, sondern eine Quelle der Art `note`. Damit gelten Auswahl, Zerlegung in Passagen, Suche und Belegstellen für sie unverändert, ohne dass irgendwo ein zweiter Fall entsteht.
-
-## Entscheidungen
-
-### Voller Kontext statt RAG, mit einer Grenze
-
-Solange die gewählten Quellen zusammen unter 120.000 Zeichen bleiben, geht der gesamte Text in den Prompt. Kein Suchen, kein Sortieren nach Ähnlichkeit, keine Passage, die verloren geht, weil ein Suchverfahren sie für nebensächlich hielt. Für die Größenordnung, um die es hier geht, also ein paar Dokumente statt eines Archivs, ist das die genauere und die einfachere Lösung zugleich.
-
-Darüber schaltet `getContextChunks` in `lib/context.ts` auf Suche um: Passagen werden eingebettet, nach Kosinusabstand zur Frage geholt und in Lesereihenfolge zurückgegeben. Beides liegt hinter derselben Funktion, die Aufrufer merken vom Wechsel nichts.
-
-Das Studio geht bewusst einen anderen Weg. Ein Artefakt hat keine Frage, mit der man suchen könnte, und was eine Suche als themenfremd wegwirft, ist genau das, was eine Zusammenfassung dem Leser noch schuldet. Artefakte lesen deshalb immer jede Passage und zahlen dafür mit einem Modellaufruf je Fenster statt einem insgesamt.
-
-### Better Auth statt Clerk oder NextAuth
-
-Clerk hätte einen fremden Dienst zwischen Nutzer und Datenbank gestellt und Konten außerhalb des eigenen Postgres gehalten. NextAuth ist stark bei fremden Anbietern und schwach genau dort, wo dieses Projekt anfängt, nämlich bei E-Mail mit Passwort und einer eigenen Nutzertabelle.
-
-Better Auth legt seine vier Tabellen in dasselbe Schema wie alles andere, `user`, `session`, `account` und `verification` stehen in `lib/db/schema.ts` neben `notebook` und `source`. Fremdschlüssel und Kaskaden gelten damit durchgehend, und ein gelöschtes Konto nimmt seine Notizbücher wirklich mit.
-
-Google-Anmeldung ist zugeschaltet, Kontoverknüpfung nur für Google. Bewusst nicht abgeschaltet ist die Prüfung, ob die lokale E-Mail bestätigt sein muss, bevor ein fremdes Konto darauf verknüpft werden darf: ohne sie kann sich jemand mit fremder Adresse anmelden und das bestehende Konto übernehmen.
-
-### pglite für Datenbanktests
-
-Datenbanktests laufen gegen ein Postgres, das im selben Prozess startet, siehe `lib/db/test-db.ts`. Kein Docker, keine Testdatenbank in der Cloud, keine Zugangsdaten für den Testlauf.
-
-Der entscheidende Teil ist, dass darauf die echten Migrationsdateien angewendet werden. Eine kaputte Migration lässt damit die Unit-Tests scheitern und nicht erst das Deployment. pgvector kommt als eigenes Paket dazu, weil die Migration die Erweiterung anlegt.
-
-### Ein Gateway statt Provider-SDKs
-
-Alle Modelle, also Chat, Artefakte, Einbettungen und Sprache, laufen über das AI Gateway. Ein Schlüssel, ein Ort für Kosten, und ein Modellwechsel ist eine Zeichenkette in einer Umgebungsvariablen statt eines neuen Pakets.
-
-Das hat einen sichtbaren Preis: Ein Modell, das im Gateway nicht geführt wird, ist nicht erreichbar. Für die Audio-Übersicht heißt das `openai/tts-1-hd` statt `gpt-4o-mini-tts`, und damit keine Regieanweisungen an die Stimme.
-
-### Eine mp3 statt einer Playlist
-
-Ein Syntheseaufruf nimmt gut 4000 Zeichen, zehn Minuten gesprochener Text sind mehr. Der naheliegende Ausweg wäre eine Playlist im Browser gewesen, um ffmpeg in einer Serverless-Funktion zu vermeiden.
-
-Nachgemessen war das unnötig: Die Modelle liefern mp3 ohne ID3-Kopf und mit konstanter Bitrate, also folgen die Frames der zweiten Datei einfach auf die der ersten. Zwei Aufnahmen von 29,016 und 29,160 Sekunden ergeben zusammengehängt exakt 58,176 Sekunden. Es bleibt eine Datei, ein Regler über die ganze Folge und keine Pause an den Nahtstellen.
-
-### Private Ablage mit signierter URL
-
-Eine Audio-Übersicht ist der Inhalt fremder Quellen. Eine öffentliche Blob-Adresse wäre die einzige Stelle im Projekt gewesen, an der das Kennen einer URL als Erlaubnis zählt. Der Store ist deshalb privat, gespeichert wird nur der Pfad, und `/api/audio/[artifactId]` prüft Sitzung und Besitzer und leitet dann auf eine URL weiter, die nach einer Stunde verfällt. Die Datei selbst läuft nicht durch die Funktion, weshalb Vorspulen normal funktioniert.
-
-## Lokal starten
-
-Vorausgesetzt sind Node 24 (steht in `.nvmrc`) und pnpm 11.
+Vorausgesetzt sind Node 24 (steht in `.nvmrc`) und pnpm 11. Dazu eine Postgres-Datenbank mit der Erweiterung `pgvector`, ein Schlüssel für das Vercel AI Gateway und ein Vercel-Blob-Store für die Audiodateien.
 
 ```bash
+git clone https://github.com/ledo9315/kognito.git
+cd kognito
 pnpm install
-vercel env pull .env.local   # oder die Datei von Hand anlegen, siehe Tabelle
+
+cp .env.example .env.local   # Werte eintragen, siehe Konfiguration
 pnpm db:migrate
 pnpm dev
 ```
 
-In `.env.local` gehören:
+Die App läuft dann auf http://localhost:3000.
 
-| Variable | Wofür |
+## Konfiguration
+
+| Variable | Pflicht | Wofür |
+| --- | --- | --- |
+| `DATABASE_URL` | ja | Postgres mit pgvector, gepoolte Verbindung |
+| `BETTER_AUTH_SECRET` | ja | Signatur der Sitzungen |
+| `AI_GATEWAY_API_KEY` | ja | Chat, Artefakte, Einbettungen und Sprachausgabe |
+| `BLOB_READ_WRITE_TOKEN` | für Audio | Ablage der erzeugten mp3-Dateien |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | nein | ohne sie fehlt nur die Anmeldung über Google |
+| `BETTER_AUTH_URL` | nein | wird sonst aus der Umgebung abgeleitet |
+| `AI_GATEWAY_MODEL` | nein | Voreinstellung `openai/gpt-5-mini` |
+| `AI_EMBEDDING_MODEL` | nein | Voreinstellung `openai/text-embedding-3-small` |
+| `AI_SPEECH_MODEL` | nein | Voreinstellung `openai/tts-1-hd` |
+| `AI_SPEECH_VOICE` | nein | Voreinstellung `nova` |
+
+Wer auf Vercel und Neon arbeitet, holt sich alle Werte mit `vercel env pull .env.local` in einem Zug.
+
+## Wie es funktioniert
+
+### Quellen und Passagen
+
+Eine hochgeladene Datei wird ausgelesen, in Passagen von 500 bis 1000 Zeichen mit 100 Zeichen Überlappung geschnitten und mit ihren Zeichenpositionen gespeichert. Diese Positionen sind es, die eine Belegstelle später an die richtige Stelle im Quelltext springen lassen. Eine Notiz ist keine eigene Tabelle, sondern eine Quelle der Art `note`, weshalb Auswahl, Zerlegung, Suche und Belege für sie unverändert gelten.
+
+### Antworten
+
+Solange die gewählten Quellen zusammen unter 120.000 Zeichen bleiben, geht ihr gesamter Text in den Prompt. Kein Suchen, kein Sortieren nach Ähnlichkeit, keine Passage, die verloren geht, weil ein Suchverfahren sie für nebensächlich hielt.
+
+Darüber schaltet `getContextChunks` in `lib/context.ts` auf Suche um: Passagen werden eingebettet, nach Kosinusabstand zur Frage geholt und in Lesereihenfolge an das Modell übergeben. Beides liegt hinter derselben Funktion, aufrufender Code merkt vom Wechsel nichts.
+
+Das Modell zitiert mit Nummern, die auf die übergebenen Passagen zeigen. Beim Auflösen werden Nummern verworfen, die es sich ausgedacht hat.
+
+### Artefakte
+
+Ein Artefakt hat keine Frage, mit der man suchen könnte, und was eine Suche als themenfremd verwirft, ist genau das, was eine Zusammenfassung dem Leser noch schuldet. Artefakte lesen deshalb immer jede Passage der Auswahl. Passt sie nicht in einen Prompt, wird sie in Fenster geteilt, die nebeneinander laufen, und die Teilergebnisse werden im Code zusammengeführt statt von einem weiteren Modellaufruf.
+
+### Audio-Übersicht
+
+Zuerst entsteht ein Skript von rund zehn Minuten, dann wird es gesprochen. Da ein Syntheseaufruf gut 4000 Zeichen annimmt, wird das Skript an Satzgrenzen geteilt, die Stücke laufen nebeneinander und werden anschließend zu einer Datei zusammengefügt. Das braucht kein ffmpeg: Die Modelle liefern mp3 ohne ID3-Kopf und mit konstanter Bitrate, also folgen die Frames des zweiten Stücks unmittelbar auf die des ersten, und die Gesamtlänge stimmt auf die Millisekunde.
+
+### Zugriff
+
+Autorisierung passiert serverseitig. `proxy.ts` prüft nur optimistisch das Sitzungscookie und trifft keine Entscheidung, die eigentliche Prüfung steht in `lib/session.ts` und wird von jeder Seite und jeder Action aufgerufen, die Nutzerdaten anfasst. Jede Abfrage filtert zusätzlich nach der Besitzer-Id des Notizbuchs.
+
+Die Audiodateien liegen in einem privaten Blob-Store. Gespeichert wird nur ihr Pfad, und `/api/audio/[artifactId]` prüft Sitzung und Besitzer, bevor es auf eine signierte Adresse weiterleitet, die nach einer Stunde verfällt.
+
+## Technik
+
+| Bereich | Wahl |
 | --- | --- |
-| `DATABASE_URL` | Neon Postgres, gepoolte Verbindung |
-| `BETTER_AUTH_SECRET` | Signatur der Sitzungen |
-| `AI_GATEWAY_API_KEY` | Chat, Artefakte, Einbettungen, Sprache |
-| `BLOB_READ_WRITE_TOKEN` | Ablage der Audiodateien |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional, ohne sie fehlt nur die Google-Anmeldung |
-| `AI_GATEWAY_MODEL`, `AI_EMBEDDING_MODEL`, `AI_SPEECH_MODEL`, `AI_SPEECH_VOICE` | optional, überschreiben die Voreinstellungen |
+| Framework | Next.js 16, App Router, React 19 |
+| Oberfläche | Tailwind 4, shadcn/ui auf Base UI |
+| Datenbank | Postgres mit pgvector, Drizzle ORM |
+| Konten | Better Auth |
+| Modelle | AI SDK über das Vercel AI Gateway |
+| Dateien | Vercel Blob |
+| Tests | Vitest mit pglite, Playwright |
 
-Die Werte kommen aus Neon und Vercel.
+Geschrieben wird über Server Actions. Eigene Routen gibt es nur zwei: `/api/chat` streamt die Antwort, `/api/audio/[artifactId]` liefert eine Datei aus.
 
-## Tests
-
-```bash
-pnpm test        # Vitest, ein Durchlauf
-pnpm test:e2e    # Playwright, Chromium
-pnpm lint
-pnpm typecheck
-pnpm build
+```
+app/            Seiten, Layouts und die beiden Routen
+components/     Oberfläche, ui/ enthält die shadcn-Bausteine
+lib/            Fachlogik: Quellen, Chat, Artefakte, Sprache, Sitzung
+lib/db/         Schema, Migrationen, Testdatenbank
+e2e/            Playwright-Specs
 ```
 
-224 Unit-Tests in 17 Dateien, dazu eine achtzehnte, die nur mit `pnpm test:live` gegen ein echtes Modell läuft. Kein jsdom und keine Testing Library: getestet wird, was rechnet und was speichert, nicht wie es aussieht. Datenbanktests laufen gegen pglite, Modellaufrufe gegen die Mock-Modelle des AI SDK, sodass der ganze Lauf ohne Netz und ohne Zugangsdaten auskommt.
+## Entwicklung
+
+```bash
+pnpm dev          # Entwicklungsserver
+pnpm build        # Produktionsbuild
+pnpm lint
+pnpm typecheck
+pnpm test         # Vitest, ein Durchlauf
+pnpm test:watch
+pnpm test:e2e     # Playwright, Chromium
+pnpm db:generate  # Migration aus Änderungen an schema.ts
+pnpm db:migrate
+pnpm db:studio
+```
+
+Einzelne Tests laufen mit `pnpm test lib/session.test.ts` oder `pnpm test -t 'owner scoping'`.
+
+### Tests
+
+224 Unit-Tests, ohne jsdom und ohne Testing Library: geprüft wird, was rechnet und was speichert. Datenbanktests laufen gegen ein Postgres, das im selben Prozess startet, und wenden dabei die echten Migrationsdateien an, eine kaputte Migration fällt also schon in den Unit-Tests auf. Modellaufrufe treffen die Mock-Modelle des AI SDK, sodass der ganze Lauf ohne Netz und ohne Zugangsdaten auskommt.
 
 Playwright fährt drei Projekte: `setup` meldet ein frisches Konto an und legt die Sitzung ab, `chromium` fährt die angemeldeten Specs dagegen, `anonymous` die abgemeldeten ohne sie. Lokal gegen `pnpm dev`, auf CI gegen `pnpm build && pnpm start`.
 
-CI läuft in zwei parallelen Jobs. `checks` bekommt bewusst keine einzige Zugangsdatengabe: dass Lint, Typen, Unit-Tests und Build ohne `DATABASE_URL` durchlaufen, ist der Beweis, dass Datenbank und Auth wirklich erst beim ersten Aufruf gebaut werden und nicht beim Import. `e2e` läuft gegen einen eigenen Neon-Branch und wendet vorher die Migrationen an.
+CI läuft in zwei parallelen Jobs. `checks` bekommt bewusst keine Zugangsdaten: dass Lint, Typen, Unit-Tests und Build ohne `DATABASE_URL` durchlaufen, belegt, dass Datenbank und Auth erst beim ersten Aufruf gebaut werden und nicht beim Import. `e2e` läuft gegen eine eigene Datenbank und wendet vorher die Migrationen an.
 
-Ein bekannter Haken: Startet Vitest alle Dateien gleichzeitig, kippen die pglite-Tests auf schwächeren Maschinen reihenweise in Hook-Timeouts. `pnpm exec vitest run --fileParallelism=false` läuft durch.
+Bekannter Haken: Startet Vitest alle Dateien gleichzeitig, kippen die pglite-Tests auf schwächeren Maschinen in Hook-Timeouts. `pnpm exec vitest run --fileParallelism=false` läuft durch.
 
-## Was bewusst offen blieb
+## Grenzen
 
-- **Kein Dialog mit zwei Stimmen.** Die Audio-Übersicht hat einen Erzähler. Der Umbau wäre überschaubar, die Grenze liegt woanders: kein Sprachmodell im Gateway spricht Dialog mit Einwürfen, zwei Stimmen, die abwechselnd Sätze vorlesen, sind noch kein Gespräch.
-- **Die Mindmap kann nichts einklappen.** Mermaid kann es nicht, also begrenzt der Code stattdessen die Anzahl der Knoten. Mit Einklappen wäre `markmap` die Bibliothek.
-- **Kein Teilen.** Notizbücher gehören genau einem Konto. Freigaben hätten ein zweites Rechtemodell bedeutet und wären am Kern vorbeigegangen.
-- **Kein Dark Mode.** Angelegt ist er in den Tailwind-Variablen, gesetzt wird die Klasse nirgends.
-- **Kein Hintergrundjob.** Alles läuft in der Anfrage, die es ausgelöst hat. Eine Audio-Übersicht dauert damit knapp eine Minute, in der ein Ladezustand steht.
-- **Der Leser wird doppelt montiert.** Das Layout rendert die rechte Spalte einmal für breite und einmal für schmale Fenster und versteckt eine davon per CSS. Doppelter Zustand, doppelte Anfragen. Auffällig wurde es erst, als dort Ton hing.
+- Die Audio-Übersicht hat einen Erzähler und keinen Dialog. Kein Sprachmodell im Gateway spricht Gespräche mit Einwürfen, zwei Stimmen, die abwechselnd Sätze vorlesen, sind noch keins.
+- Die Mindmap kann keine Äste einklappen, weil Mermaid es nicht kann. Stattdessen begrenzt der Code die Anzahl der Knoten.
+- Notizbücher gehören genau einem Konto, es gibt keine Freigabe und keine Zusammenarbeit.
+- Kein Dark Mode. Die Variablen dafür stehen bereit, die Klasse wird nirgends gesetzt.
+- Kein Hintergrundjob. Alles läuft in der Anfrage, die es ausgelöst hat, eine Audio-Übersicht dauert damit knapp eine Minute.
+- Die rechte Spalte wird zweimal gerendert, einmal für breite und einmal für schmale Fenster, versteckt wird eine davon per CSS. Das kostet doppelten Zustand und doppelte Anfragen.
+
+## Mitmachen
+
+Erst ein Issue, dann ein Branch, dann ein Pull Request. Direkt auf `main` geht nichts, und beide CI-Jobs müssen grün sein. Gemergt wird mit Merge-Commits, Squash und Rebase sind abgeschaltet.
+
+Sprache: die Oberfläche und alles, was in Issues und Pull Requests steht, auf Deutsch. Code, Bezeichner, Kommentare und Commit-Nachrichten auf Englisch. Bezeichner werden ausgeschrieben, also `notebook` statt `nb`.
