@@ -188,7 +188,7 @@ export function ChatPanel() {
               <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
                 {selectedCount > 0
                   ? `${selectedCount} ${selectedCount === 1 ? 'Quelle ist' : 'Quellen sind'} bereit. Stelle eine Frage. Jede Aussage wird mit einer Belegstelle versehen.`
-                  : 'Wähle links mindestens eine Quelle aus, damit Antworten belegt werden können.'}
+                  : 'Wähle mindestens eine Quelle aus, damit Antworten belegt werden können.'}
               </p>
             </div>
             <div className="flex w-full max-w-md flex-col gap-2">
@@ -398,7 +398,9 @@ export function ChatPanel() {
                 aria-label="Frage eingeben"
               />
               <InputGroupAddon align="block-end">
-                <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                {/* A phone keyboard has no Shift + Enter, and the line costs
+                    more than it explains there. */}
+                <span className="hidden items-center gap-1.5 text-[11px] text-muted-foreground sm:flex">
                   <Kbd>Enter</Kbd>
                   <span>senden</span>
                   <span aria-hidden="true">·</span>
