@@ -28,7 +28,18 @@ export async function createNotebookAction(
     return { error: parsed.error.issues[0].message }
   }
 
-  const created = await createNotebook(await requireOwnerId(), parsed.data)
+  // The picker in the dialog always sends one, the fallback covers a form
+  // that reaches the server without it.
+  const wanted = formData.get('emoji')
+  const icon = typeof wanted === 'string' ? wanted.trim() : ''
+  if (icon && !isEmoji(icon)) return { error: 'Bitte wähle ein einzelnes Emoji.' }
+
+  const created = await createNotebook(
+    await requireOwnerId(),
+    parsed.data,
+    undefined,
+    icon || undefined,
+  )
 
   redirect(`/notebook/${created.id}`)
 }

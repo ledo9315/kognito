@@ -54,10 +54,13 @@ export async function createNotebook(
   ownerId: string,
   title: string,
   db: Database = getDb(),
+  /** Behind the database on purpose: twenty callers pass one, none pass the
+   *  other, and the column has a default. */
+  emoji?: string,
 ) {
   const [row] = await db
     .insert(notebook)
-    .values({ id: crypto.randomUUID(), ownerId, title })
+    .values({ id: crypto.randomUUID(), ownerId, title, emoji })
     .returning()
 
   return row

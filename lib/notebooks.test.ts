@@ -178,6 +178,18 @@ describe('the overview list', () => {
   })
 })
 
+describe('creating a notebook', () => {
+  it('takes a symbol and falls back to the default of the column', async () => {
+    const alice = await createUser('alice')
+
+    const chosen = await createNotebook(alice, 'Mit Symbol', database.db, '🎓')
+    const plain = await createNotebook(alice, 'Ohne Symbol', database.db)
+
+    expect(chosen.emoji).toBe('🎓')
+    expect(plain.emoji).toBe('📓')
+  })
+})
+
 describe('the emoji of a notebook', () => {
   it('takes a single pictograph, with or without its trimmings', () => {
     expect(isEmoji('📓')).toBe(true)
