@@ -1,3 +1,4 @@
+import { audioOverviewMeta, readAudioOverview } from '@/lib/audio'
 import { briefingMeta, readBriefing } from '@/lib/briefing'
 import type { ArtifactKind } from '@/lib/db/schema'
 import { faqMeta, readFaq } from '@/lib/faq'
@@ -13,21 +14,8 @@ import { readTimeline, timelineMeta } from '@/lib/timeline'
  * kind they hold.
  */
 
-/** The kinds a tile really generates. The rest still fake it, see #26. */
-export const generatedKinds = [
-  'briefing',
-  'faq',
-  'timeline',
-  'flashcards',
-  'mindmap',
-] as const
-export type GeneratedKind = (typeof generatedKinds)[number]
-
-export function isGenerated(kind: string): kind is GeneratedKind {
-  return (generatedKinds as readonly string[]).includes(kind)
-}
-
 export const artifactLabels: Record<ArtifactKind, string> = {
+  audio: 'Audio-Übersicht',
   briefing: 'Briefing',
   faq: 'FAQ',
   timeline: 'Zeitleiste',
@@ -41,6 +29,10 @@ export function artifactMeta(artifact: {
   content: unknown
 }): string | null {
   switch (artifact.kind) {
+    case 'audio': {
+      const overview = readAudioOverview(artifact.content)
+      return overview && audioOverviewMeta(overview)
+    }
     case 'briefing': {
       const briefing = readBriefing(artifact.content)
       return briefing && briefingMeta(briefing)

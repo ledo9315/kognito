@@ -720,8 +720,10 @@ describe('owner scoping', () => {
     )
 
     expect(await listArtifacts(hers.notebookId, 'bob', database.db)).toEqual([])
-    expect(await deleteArtifact(stored!.id, 'bob', database.db)).toBe(false)
-    expect(await deleteArtifact(stored!.id, hers.ownerId, database.db)).toBe(true)
+    expect(await deleteArtifact(stored!.id, 'bob', database.db)).toBeNull()
+    expect(
+      await deleteArtifact(stored!.id, hers.ownerId, database.db),
+    ).toMatchObject({ id: stored!.id })
   })
 })
 

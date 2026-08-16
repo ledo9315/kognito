@@ -2,6 +2,7 @@
 
 import { useState, type ComponentType } from 'react'
 import {
+  AudioLines,
   ChevronLeft,
   ChevronRight,
   FileText,
@@ -11,11 +12,13 @@ import {
   ListOrdered,
   X,
 } from 'lucide-react'
+import { AudioPlayer } from '@/components/audio-player'
 import { useNotebookStore } from '@/components/notebook-store'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { artifactLabels, artifactMeta } from '@/lib/artifact-kinds'
+import { readAudioOverview } from '@/lib/audio'
 import { readBriefing, type Briefing } from '@/lib/briefing'
 import { readFaq, type Faq } from '@/lib/faq'
 import { readFlashcards, type Flashcards } from '@/lib/flashcards'
@@ -26,6 +29,7 @@ type ArtifactIcon = ComponentType<{ className?: string }>
 type ArtifactIcons = Record<ArtifactRow['kind'], ArtifactIcon>
 
 const icons = {
+  audio: AudioLines,
   briefing: FileText,
   faq: HelpCircle,
   timeline: ListOrdered,
@@ -81,6 +85,23 @@ export function ArtifactReader() {
 /** Each kind reads its own content, and says so when it cannot. */
 function Body({ artifact }: { artifact: ArtifactRow }) {
   switch (artifact.kind) {
+    case 'audio': {
+      const overview = readAudioOverview(artifact.content)
+      return overview ? (
+        <>
+          <GeneratedHeading>Gesprochene Übersicht</GeneratedHeading>
+          {/* Keyed by artifact, so the next overview starts at its first
+              section instead of wherever the last one was left. */}
+          <AudioPlayer
+            key={artifact.id}
+            artifactId={artifact.id}
+            overview={overview}
+          />
+        </>
+      ) : (
+        <Unreadable />
+      )
+    }
     case 'briefing': {
       const briefing = readBriefing(artifact.content)
       return briefing ? <BriefingBody briefing={briefing} /> : <Unreadable />

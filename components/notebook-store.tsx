@@ -3,7 +3,6 @@
 import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import type { ArtifactRow } from '@/lib/artifacts'
-import type { StudioArtifact, StudioArtifactKind } from '@/lib/data'
 import {
   selectAllSourcesAction,
   selectSourceAction,
@@ -20,8 +19,6 @@ type State = {
   openSourceId: string | null
   openArtifactId: string | null
   passage: Passage | null
-  /** Only the tiles that are not built yet, see `simulated` below. */
-  artifacts: StudioArtifact[]
 }
 
 type Action =
@@ -29,15 +26,12 @@ type Action =
   | { type: 'select-all'; sourceIds: string[]; selected: boolean }
   | { type: 'open-source'; sourceId: string | null; passage: Passage | null }
   | { type: 'open-artifact'; artifactId: string | null }
-  | { type: 'add-artifact'; artifact: StudioArtifact }
-  | { type: 'remove-artifact'; artifactId: string }
 
 const emptyState: State = {
   selection: {},
   openSourceId: null,
   openArtifactId: null,
   passage: null,
-  artifacts: [],
 }
 
 function reducer(state: State, action: Action): State {
@@ -61,22 +55,9 @@ function reducer(state: State, action: Action): State {
       }
     case 'open-artifact':
       return { ...state, openArtifactId: action.artifactId, openSourceId: null }
-    case 'add-artifact':
-      return { ...state, artifacts: [action.artifact, ...state.artifacts] }
-    case 'remove-artifact':
-      return {
-        ...state,
-        artifacts: state.artifacts.filter(
-          (artifact) => artifact.id !== action.artifactId,
-        ),
-      }
     default:
       return state
   }
-}
-
-function uid(prefix: string) {
-  return `${prefix}-${Math.random().toString(36).slice(2, 9)}`
 }
 
 async function keepOrUndo(stored: Promise<boolean>, undo: () => void) {
@@ -92,23 +73,16 @@ async function keepOrUndo(stored: Promise<boolean>, undo: () => void) {
 type StoreValue = {
   notebook: Notebook
   sources: SourceItem[]
-  /** The stored conversation, as it was when the page was rendered. */
   history: MessageRow[]
   openSourceId: string | null
   openArtifactId: string | null
-  /** Set when the reader was opened from a citation, null otherwise. */
   passage: Passage | null
-  /** Generated and stored. Only briefings so far. */
   artifacts: ArtifactRow[]
-  simulated: StudioArtifact[]
-  /** The sources of kind `note`, the ones written here instead of uploaded. */
   notes: SourceItem[]
   selectSource: (sourceId: string, selected: boolean) => void
   selectAllSources: (selected: boolean) => void
   openSource: (sourceId: string | null, passage?: Passage) => void
   openArtifact: (artifactId: string | null) => void
-  simulateArtifact: (kind: StudioArtifactKind) => Promise<StudioArtifact>
-  removeSimulated: (artifactId: string) => void
 }
 
 const StoreContext = createContext<StoreValue | null>(null)
@@ -146,11 +120,7 @@ export function NotebookStoreProvider({
       openArtifactId: state.openArtifactId,
       passage: state.passage,
       artifacts,
-      simulated: state.artifacts,
       notes: merged.filter((source) => source.kind === 'note'),
-      // The check mark reacts at once and the write follows. If the write
-      // fails the mark goes back, because a mark that lies decides which
-      // sources answer the next question.
       selectSource: (sourceId, selected) => {
         dispatch({ type: 'select', sourceId, selected })
         void keepOrUndo(selectSourceAction(sourceId, selected), () =>
@@ -168,20 +138,6 @@ export function NotebookStoreProvider({
       openSource: (sourceId, passage) =>
         dispatch({ type: 'open-source', sourceId, passage: passage ?? null }),
       openArtifact: (artifactId) => dispatch({ type: 'open-artifact', artifactId }),
-      simulateArtifact: async (kind) => {
-        await new Promise((resolve) => setTimeout(resolve, 1600))
-        const artifact: StudioArtifact = {
-          id: uid('artifact'),
-          kind,
-          title: artifactTitle(kind),
-          meta: artifactMeta(kind),
-          createdAt: Date.now(),
-        }
-        dispatch({ type: 'add-artifact', artifact })
-        return artifact
-      },
-      removeSimulated: (artifactId) =>
-        dispatch({ type: 'remove-artifact', artifactId }),
     }
   }, [notebook, merged, history, artifacts, state])
 
@@ -196,36 +152,3 @@ export function useNotebookStore() {
   return context
 }
 
-function artifactTitle(kind: StudioArtifactKind) {
-  switch (kind) {
-    case 'audio':
-      return 'Audio-Übersicht'
-    case 'briefing':
-      return 'Briefing-Dokument'
-    case 'faq':
-      return 'Häufige Fragen'
-    case 'timeline':
-      return 'Zeitleiste'
-    case 'mindmap':
-      return 'Mindmap'
-    case 'flashcards':
-      return 'Lernkarten'
-  }
-}
-
-function artifactMeta(kind: StudioArtifactKind) {
-  switch (kind) {
-    case 'audio':
-      return '9:42 · Zwei Sprecher'
-    case 'briefing':
-      return '5 Abschnitte'
-    case 'faq':
-      return '11 Fragen'
-    case 'timeline':
-      return '8 Ereignisse'
-    case 'mindmap':
-      return '4 Ebenen'
-    case 'flashcards':
-      return '18 Karten'
-  }
-}

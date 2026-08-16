@@ -12,7 +12,6 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useNotebookStore } from '@/components/notebook-store'
-import { AudioPlayer } from '@/components/audio-player'
 import { MindmapView } from '@/components/mindmap-view'
 import { NotesSection } from '@/components/notes-section'
 import { Button } from '@/components/ui/button'
@@ -24,7 +23,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
-import { Skeleton } from '@/components/ui/skeleton'
 import {
   Item,
   ItemActions,
@@ -37,13 +35,13 @@ import {
   deleteArtifactAction,
   generateArtifactAction,
 } from '@/lib/artifact-actions'
-import { artifactLabels, artifactMeta, isGenerated } from '@/lib/artifact-kinds'
+import { artifactLabels, artifactMeta } from '@/lib/artifact-kinds'
 import { readMindmap } from '@/lib/mindmap'
 import type { ArtifactRow } from '@/lib/artifacts'
-import type { StudioArtifactKind } from '@/lib/data'
+import type { ArtifactKind } from '@/lib/db/schema'
 
 const generators: {
-  kind: StudioArtifactKind
+  kind: ArtifactKind
   label: string
   hint: string
   icon: ComponentType<{ className?: string }>
@@ -51,7 +49,7 @@ const generators: {
   {
     kind: 'audio',
     label: 'Audio-Übersicht',
-    hint: 'Dialog zweier Sprecher',
+    hint: 'Ein Erzähler über die Quellen',
     icon: AudioLines,
   },
   {
@@ -82,7 +80,7 @@ const generators: {
 ]
 
 const artifactIcons: Record<
-  StudioArtifactKind,
+  ArtifactKind,
   ComponentType<{ className?: string }>
 > = {
   audio: AudioLines,
@@ -94,21 +92,12 @@ const artifactIcons: Record<
 }
 
 export function StudioPanel() {
-  const {
-    notebook,
-    sources,
-    artifacts,
-    simulated,
-    simulateArtifact,
-    openArtifact,
-    removeSimulated,
-  } = useNotebookStore()
-  const [pending, setPending] = useState<StudioArtifactKind | null>(null)
+  const { notebook, sources, artifacts, openArtifact } = useNotebookStore()
+  const [pending, setPending] = useState<ArtifactKind | null>(null)
   const [openMindmap, setOpenMindmap] = useState<ArtifactRow | null>(null)
 
   const selected = sources.filter((source) => source.selected)
   const selectedCount = selected.length
-  const audioArtifact = simulated.find((artifact) => artifact.kind === 'audio')
 
   /**
    * A mindmap goes into a dialog, every other kind into the reader panel.
@@ -125,7 +114,7 @@ export function StudioPanel() {
     openArtifact(artifact.id)
   }
 
-  async function generate(kind: StudioArtifactKind) {
+  async function generate(kind: ArtifactKind) {
     if (selectedCount === 0) {
       toast.error('Keine Quelle ausgewählt', {
         description: 'Wähle mindestens eine Quelle aus.',
@@ -135,32 +124,23 @@ export function StudioPanel() {
 
     setPending(kind)
 
-    if (isGenerated(kind)) {
+    const result = await generateArtifactAction(
+      notebook.id,
+      kind,
+      selected.map((source) => source.id),
+    )
 
-      const result = await generateArtifactAction(
-        notebook.id,
-        kind,
-        selected.map((source) => source.id),
-      )
-      
-      setPending(null)
+    setPending(null)
 
-      if (!result.ok) {
-        toast.error(`${artifactLabels[kind]} nicht erstellt`, {
-          description: result.error,
-        })
-        return
-      }
-
-      show(result.artifact)
-      toast.success(`${result.artifact.title} erstellt`)
+    if (!result.ok) {
+      toast.error(`${artifactLabels[kind]} nicht erstellt`, {
+        description: result.error,
+      })
       return
     }
 
-    // the remaining tiles still fake it
-    const artifact = await simulateArtifact(kind)
-    setPending(null)
-    toast.success(`${artifact.title} erstellt`, { description: artifact.meta })
+    show(result.artifact)
+    toast.success(`${result.artifact.title} erstellt`)
   }
 
   async function remove(artifactId: string, title: string) {
@@ -179,20 +159,6 @@ export function StudioPanel() {
       </header>
 
       <div className="scrollbar-slim flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
-        {audioArtifact ? (
-          <AudioPlayer
-            title={audioArtifact.title}
-            meta={audioArtifact.meta}
-            notebookTitle={notebook.title}
-          />
-        ) : pending === 'audio' ? (
-          <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-2 w-full" />
-            <Skeleton className="h-8 w-24" />
-          </div>
-        ) : null}
-
         <section className="flex flex-col gap-2.5">
           <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
             Erzeugen
@@ -228,7 +194,7 @@ export function StudioPanel() {
             Ergebnisse
           </h3>
 
-          {artifacts.length === 0 && simulated.length === 0 ? (
+          {artifacts.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs leading-relaxed text-muted-foreground">
               Noch nichts erstellt. Wähle oben ein Format, um aus deinen Quellen
               eine Zusammenfassung, Lernhilfe oder Audio-Übersicht zu erzeugen.
@@ -272,31 +238,6 @@ export function StudioPanel() {
                           event.stopPropagation()
                           void remove(artifact.id, artifact.title)
                         }}
-                        aria-label={`${artifact.title} löschen`}
-                      >
-                        <Trash2 />
-                      </Button>
-                    </ItemActions>
-                  </Item>
-                )
-              })}
-
-              {simulated.map((artifact) => {
-                const Icon = artifactIcons[artifact.kind]
-                return (
-                  <Item key={artifact.id} variant="outline" size="sm">
-                    <ItemMedia variant="icon">
-                      <Icon />
-                    </ItemMedia>
-                    <ItemContent>
-                      <ItemTitle>{artifact.title}</ItemTitle>
-                      <ItemDescription>{artifact.meta}</ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => removeSimulated(artifact.id)}
                         aria-label={`${artifact.title} löschen`}
                       >
                         <Trash2 />
