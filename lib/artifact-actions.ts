@@ -7,6 +7,7 @@ import { createArtifact, deleteArtifact, type ArtifactRow } from '@/lib/artifact
 import {
   generateBriefing,
   generateFaq,
+  generateFlashcards,
   generateTimeline,
   NoDatesError,
   NoSourcesError,
@@ -28,6 +29,7 @@ const generators: Record<GeneratedKind, (input: { sourceIds: string[]; ownerId: 
   briefing: generateBriefing,
   faq: generateFaq,
   timeline: generateTimeline,
+  flashcards: generateFlashcards,
 }
 
 export async function generateArtifactAction(

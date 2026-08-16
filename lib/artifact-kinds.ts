@@ -1,18 +1,19 @@
 import { briefingMeta, readBriefing } from '@/lib/briefing'
 import type { ArtifactKind } from '@/lib/db/schema'
 import { faqMeta, readFaq } from '@/lib/faq'
+import { flashcardsMeta, readFlashcards } from '@/lib/flashcards'
 import { readTimeline, timelineMeta } from '@/lib/timeline'
 
 /**
- * What the two kinds have in common, kept where the browser may read it.
+ * What the kinds have in common, kept where the browser may read it.
  *
  * The studio lists artifacts of every kind and the reader labels the one it
  * shows, so both need a name and the line under it without knowing which
  * kind they hold.
  */
 
-/** The kinds a tile really generates. The rest still fake it, see #26 to #28. */
-export const generatedKinds = ['briefing', 'faq', 'timeline'] as const
+/** The kinds a tile really generates. The rest still fake it, see #26 and #28. */
+export const generatedKinds = ['briefing', 'faq', 'timeline', 'flashcards'] as const
 export type GeneratedKind = (typeof generatedKinds)[number]
 
 export function isGenerated(kind: string): kind is GeneratedKind {
@@ -23,6 +24,7 @@ export const artifactLabels: Record<ArtifactKind, string> = {
   briefing: 'Briefing',
   faq: 'FAQ',
   timeline: 'Zeitleiste',
+  flashcards: 'Lernkarten',
 }
 
 /** Null when the stored json does not match the schema of its kind. */
@@ -42,6 +44,10 @@ export function artifactMeta(artifact: {
     case 'timeline': {
       const timeline = readTimeline(artifact.content)
       return timeline && timelineMeta(timeline)
+    }
+    case 'flashcards': {
+      const flashcards = readFlashcards(artifact.content)
+      return flashcards && flashcardsMeta(flashcards)
     }
   }
 }

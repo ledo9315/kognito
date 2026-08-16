@@ -1,7 +1,15 @@
 'use client'
 
-import type { ComponentType } from 'react'
-import { FileText, HelpCircle, ListOrdered, X } from 'lucide-react'
+import { useState, type ComponentType } from 'react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  HelpCircle,
+  Layers,
+  ListOrdered,
+  X,
+} from 'lucide-react'
 import { useNotebookStore } from '@/components/notebook-store'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,6 +17,7 @@ import { Separator } from '@/components/ui/separator'
 import { artifactLabels, artifactMeta } from '@/lib/artifact-kinds'
 import { readBriefing, type Briefing } from '@/lib/briefing'
 import { readFaq, type Faq } from '@/lib/faq'
+import { readFlashcards, type Flashcards } from '@/lib/flashcards'
 import { readTimeline, type Timeline } from '@/lib/timeline'
 import type { ArtifactRow } from '@/lib/artifacts'
 
@@ -19,6 +28,7 @@ const icons = {
   briefing: FileText,
   faq: HelpCircle,
   timeline: ListOrdered,
+  flashcards: Layers,
 } satisfies ArtifactIcons
 
 export function ArtifactReader() {
@@ -81,6 +91,16 @@ function Body({ artifact }: { artifact: ArtifactRow }) {
       const timeline = readTimeline(artifact.content)
       return timeline ? <TimelineBody timeline={timeline} /> : <Unreadable />
     }
+    case 'flashcards': {
+      const flashcards = readFlashcards(artifact.content)
+      return flashcards ? (
+        // Keyed by artifact, so opening the next set starts at its first
+        // card instead of wherever the last one was left.
+        <FlashcardsBody key={artifact.id} flashcards={flashcards} />
+      ) : (
+        <Unreadable />
+      )
+    }
   }
 }
 
@@ -123,6 +143,82 @@ function FaqBody({ faq }: { faq: Faq }) {
           </div>
         ))}
       </dl>
+    </>
+  )
+}
+
+/**
+ * One card at a time, turned over by the reader.
+ *
+ * A disclosure and not a css flip: the answer is a second element that the
+ * button shows, so a screen reader is told what the click did and the whole
+ * thing works from the keyboard without any of it being written here.
+ */
+function FlashcardsBody({ flashcards }: { flashcards: Flashcards }) {
+  const [at, setAt] = useState(0)
+  const [turned, setTurned] = useState(false)
+  const card = flashcards.cards[at]
+
+  // Wraps around, because going through a set twice is the point of it.
+  function move(step: number) {
+    setAt((current) => (current + step + flashcards.cards.length) % flashcards.cards.length)
+    setTurned(false)
+  }
+
+  return (
+    <>
+      <GeneratedHeading>Lernkarten</GeneratedHeading>
+
+      <div className="flex min-h-44 flex-col gap-3 rounded-xl border border-border bg-card p-5">
+        <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+          Frage
+        </span>
+        <p className="text-[13px] leading-relaxed text-pretty">{card.front}</p>
+
+        <div className="mt-auto flex flex-col gap-3">
+          <p
+            id="flashcard-answer"
+            hidden={!turned}
+            className="border-t border-border pt-3 text-[13px] leading-relaxed text-pretty text-muted-foreground"
+          >
+            {card.back}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="self-start"
+            aria-expanded={turned}
+            aria-controls="flashcard-answer"
+            onClick={() => setTurned((shown) => !shown)}
+          >
+            {turned ? 'Karte zurückdrehen' : 'Karte umdrehen'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => move(-1)}
+          aria-label="Vorherige Karte"
+        >
+          <ChevronLeft />
+          Zurück
+        </Button>
+        <span aria-live="polite" className="text-[11px] text-muted-foreground">
+          Karte {at + 1} von {flashcards.cards.length}
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => move(1)}
+          aria-label="Nächste Karte"
+        >
+          Weiter
+          <ChevronRight />
+        </Button>
+      </div>
     </>
   )
 }
