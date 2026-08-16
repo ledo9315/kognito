@@ -18,6 +18,13 @@ import {
   type Flashcards as FlashcardsType,
 } from '@/lib/flashcards'
 import {
+  mergeMindmaps,
+  Mindmap,
+  mindmapRules,
+  withinBounds,
+  type Mindmap as MindmapType,
+} from '@/lib/mindmap'
+import {
   datedOnly,
   inTimeOrder,
   mergeTimelines,
@@ -79,6 +86,17 @@ export function generateFlashcards(
 ): Promise<FlashcardsType> {
 
   return generate(Flashcards, flashcardsRules, mergeFlashcards, input, options)
+}
+
+export async function generateMindmap(
+  input: Selection,
+  options: GenerationOptions = {},
+): Promise<MindmapType> {
+  // Cut to a size a drawing can carry, in code, because the counts in the
+  // schema are a wish and this is a rule. See `withinBounds`.
+  return withinBounds(
+    await generate(Mindmap, mindmapRules, mergeMindmaps, input, options),
+  )
 }
 
 export async function generateTimeline(

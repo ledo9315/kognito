@@ -13,8 +13,16 @@ import {
 import { toast } from 'sonner'
 import { useNotebookStore } from '@/components/notebook-store'
 import { AudioPlayer } from '@/components/audio-player'
+import { MindmapView } from '@/components/mindmap-view'
 import { NotesSection } from '@/components/notes-section'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -30,6 +38,8 @@ import {
   generateArtifactAction,
 } from '@/lib/artifact-actions'
 import { artifactLabels, artifactMeta, isGenerated } from '@/lib/artifact-kinds'
+import { readMindmap } from '@/lib/mindmap'
+import type { ArtifactRow } from '@/lib/artifacts'
 import type { StudioArtifactKind } from '@/lib/data'
 
 const generators: {
@@ -94,10 +104,26 @@ export function StudioPanel() {
     removeSimulated,
   } = useNotebookStore()
   const [pending, setPending] = useState<StudioArtifactKind | null>(null)
+  const [openMindmap, setOpenMindmap] = useState<ArtifactRow | null>(null)
 
   const selected = sources.filter((source) => source.selected)
   const selectedCount = selected.length
   const audioArtifact = simulated.find((artifact) => artifact.kind === 'audio')
+
+  /**
+   * A mindmap goes into a dialog, every other kind into the reader panel.
+   *
+   * Not a matter of taste: measured against mermaid, a map of 25 nodes comes
+   * out 1099 pixels wide and the panel is 384. The dialog is the only place
+   * in this layout with room for a drawing.
+   */
+  function show(artifact: ArtifactRow) {
+    if (artifact.kind === 'mindmap') {
+      setOpenMindmap(artifact)
+      return
+    }
+    openArtifact(artifact.id)
+  }
 
   async function generate(kind: StudioArtifactKind) {
     if (selectedCount === 0) {
@@ -126,7 +152,7 @@ export function StudioPanel() {
         return
       }
 
-      openArtifact(result.artifact.id)
+      show(result.artifact)
       toast.success(`${result.artifact.title} erstellt`)
       return
     }
@@ -221,7 +247,7 @@ export function StudioPanel() {
                     render={
                       <button
                         type="button"
-                        onClick={() => openArtifact(artifact.id)}
+                        onClick={() => show(artifact)}
                         className="w-full text-left"
                         aria-label={`${artifact.title} öffnen`}
                       />
@@ -287,6 +313,42 @@ export function StudioPanel() {
 
         <NotesSection />
       </div>
+
+      <MindmapDialog
+        artifact={openMindmap}
+        onClose={() => setOpenMindmap(null)}
+      />
     </div>
+  )
+}
+
+/**
+ * Nothing is mounted until a map is opened, so the mermaid import behind
+ * `MindmapView` is not even reached on a notebook nobody opens one in.
+ */
+function MindmapDialog({
+  artifact,
+  onClose,
+}: {
+  artifact: ArtifactRow | null
+  onClose: () => void
+}) {
+  const mindmap = artifact && readMindmap(artifact.content)
+
+  return (
+    <Dialog open={artifact !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="flex h-[85vh] max-h-[85vh] flex-col sm:max-w-5xl">
+        <DialogHeader>
+          <DialogTitle>{artifact?.title ?? 'Mindmap'}</DialogTitle>
+          <DialogDescription>
+            {mindmap
+              ? artifactMeta({ kind: 'mindmap', content: mindmap })
+              : 'Diese Mindmap wurde in einem älteren Format gespeichert.'}
+          </DialogDescription>
+        </DialogHeader>
+
+        {mindmap ? <MindmapView mindmap={mindmap} /> : null}
+      </DialogContent>
+    </Dialog>
   )
 }
