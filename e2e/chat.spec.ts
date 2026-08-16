@@ -38,7 +38,7 @@ async function answerWith(
 }
 
 async function addTextSource(page: Page, text: string) {
-  await page.locator('[data-slot="dialog-trigger"]').click()
+  await page.getByRole('button', { name: 'Hinzufügen', exact: true }).click()
   await page.getByRole('tab', { name: 'Text' }).click()
   await page.getByLabel('Text einfügen').fill(text)
   await page.getByRole('button', { name: 'Text hinzufügen' }).click()

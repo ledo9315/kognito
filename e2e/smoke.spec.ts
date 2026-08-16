@@ -16,7 +16,7 @@ test('a fresh notebook explains both of its empty halves', async ({ page }) => {
   // blank area the user has to interpret.
   await expect(page.getByText('Noch keine Quellen').first()).toBeVisible()
   await expect(
-    page.getByText(/Wähle links mindestens eine Quelle aus/).first(),
+    page.getByText(/Wähle mindestens eine Quelle aus/).first(),
   ).toBeVisible()
 })
 
@@ -25,7 +25,7 @@ test('a long pasted text leaves the submit button reachable', async ({
 }) => {
   await createNotebook(page, `Langer Text ${Date.now()}`)
 
-  await page.locator('[data-slot="dialog-trigger"]').click()
+  await page.getByRole('button', { name: 'Hinzufügen', exact: true }).click()
   await page.getByRole('tab', { name: 'Text' }).click()
   await page
     .getByLabel('Text einfügen')
@@ -45,7 +45,10 @@ test('a long pasted text leaves the submit button reachable', async ({
 test('source dialog opens, closes and returns focus', async ({ page }) => {
   await createNotebook(page, `Dialog ${Date.now()}`)
 
-  const trigger = page.locator('[data-slot="dialog-trigger"]')
+  // Not a role query: this one is read while the dialog is open, and an open
+  // dialog takes the page behind it out of the accessibility tree. The header
+  // trigger is the first of the two, the other sits on the empty state.
+  const trigger = page.locator('[data-slot="dialog-trigger"]').first()
   await expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
   await expect(trigger).toHaveAttribute('aria-expanded', 'false')
 

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { AppLogo } from '@/components/app-logo'
 import { SmoothScroll } from '@/components/smooth-scroll'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import dashboard from '@/public/dashboard.webp'
 
 const features: {
@@ -177,12 +177,14 @@ export function Landing() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" render={<Link href="/sign-in" />} nativeButton={false}>
+            {/* Links, not buttons: Base UI stamps role="button" on whatever
+                it renders, and these navigate. */}
+            <Link href="/sign-in" className={buttonVariants({ variant: 'ghost' })}>
               Anmelden
-            </Button>
-            <Button size="lg" render={<Link href="/sign-up" />} nativeButton={false}>
+            </Link>
+            <Link href="/sign-up" className={buttonVariants({ size: 'lg' })}>
               Kostenlos starten
-            </Button>
+            </Link>
           </div>
         </div>
       </nav>
@@ -206,21 +208,26 @@ export function Landing() {
           </p>
 
           <div className="mt-8 flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row">
-            <Button
-              size="lg"
-              className="h-11 w-full px-8 text-[15px] sm:w-auto"
-              render={<Link href="/sign-up" />} nativeButton={false}
+            <Link
+              href="/sign-up"
+              className={buttonVariants({
+                size: 'lg',
+                className: 'h-11 w-full px-8 text-[15px] sm:w-auto',
+              })}
             >
               Notizbuch anlegen
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="h-11 w-full border-white bg-white px-8 text-[15px] shadow-[0_2px_12px_rgb(0_0_0/0.06)] hover:bg-gray-50 sm:w-auto"
-              render={<Link href="/sign-in" />} nativeButton={false}
+            </Link>
+            <Link
+              href="/sign-in"
+              className={buttonVariants({
+                variant: 'outline',
+                size: 'lg',
+                className:
+                  'h-11 w-full border-white bg-white px-8 text-[15px] shadow-[0_2px_12px_rgb(0_0_0/0.06)] hover:bg-gray-50 sm:w-auto',
+              })}
             >
               Ich habe schon ein Konto
-            </Button>
+            </Link>
           </div>
 
           <Image
