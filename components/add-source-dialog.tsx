@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { addSourceAction, type SourceFormState } from '@/lib/source-actions'
+import { cn } from '@/lib/utils'
 
 export function AddSourceDialog({
   notebookId,
@@ -29,7 +30,14 @@ export function AddSourceDialog({
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState('upload')
   const [error, setError] = useState<string | null>(null)
+  const [fileName, setFileName] = useState<string | null>(null)
+  const [overDropZone, setOverDropZone] = useState(false)
   const [pending, startTransition] = useTransition()
+
+  function close() {
+    setOpen(false)
+    setFileName(null)
+  }
 
   function action(formData: FormData) {
     setError(null)
@@ -39,7 +47,7 @@ export function AddSourceDialog({
         setError(result.error)
         return
       }
-      setOpen(false)
+      close()
       toast.success('Quelle hinzugefügt', {
         description: 'Sie wird ab jetzt als Kontext für Antworten verwendet.',
       })
@@ -47,7 +55,10 @@ export function AddSourceDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => (next ? setOpen(true) : close())}
+    >
       <DialogTrigger render={trigger} />
 
       <DialogContent className="sm:max-w-lg">
@@ -59,7 +70,14 @@ export function AddSourceDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={(value) => setTab(value as string)}>
+        {/* The three panels are of different height, and the dialog would
+            resize on every tab change. The floor is the tallest of them, the
+            upload panel with its hint. */}
+        <Tabs
+          value={tab}
+          onValueChange={(value) => setTab(value as string)}
+          className="[&>[data-slot=tabs-content]]:min-h-56"
+        >
           <TabsList className="w-full">
             <TabsTrigger value="upload">Datei</TabsTrigger>
             <TabsTrigger value="link">Link</TabsTrigger>
@@ -74,20 +92,52 @@ export function AddSourceDialog({
               <FieldGroup>
                 <Field>
                   <FieldLabel htmlFor="source-file">Datei auswählen</FieldLabel>
+                  {/* The input carries the file, the label is what one sees.
+                      Dropping writes the file into the input, so the form
+                      submits a drop and a pick the same way. */}
                   <Input
                     id="source-file"
                     name="file"
                     type="file"
                     accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"
+                    className="peer sr-only"
+                    onChange={(event) =>
+                      setFileName(event.target.files?.[0]?.name ?? null)
+                    }
                   />
+                  <label
+                    htmlFor="source-file"
+                    onDragOver={(event) => {
+                      event.preventDefault()
+                      setOverDropZone(true)
+                    }}
+                    onDragLeave={() => setOverDropZone(false)}
+                    onDrop={(event) => {
+                      event.preventDefault()
+                      setOverDropZone(false)
+                      const input = event.currentTarget.control
+                      if (!(input instanceof HTMLInputElement)) return
+                      input.files = event.dataTransfer.files
+                      setFileName(event.dataTransfer.files[0]?.name ?? null)
+                    }}
+                    className={cn(
+                      // Children do not take the pointer, otherwise dragging
+                      // across them reads as leaving the zone.
+                      'flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-dashed border-input px-4 py-6 text-center transition-colors hover:border-primary/40 hover:bg-accent/40 peer-focus-visible:border-ring peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 [&_*]:pointer-events-none',
+                      overDropZone && 'border-primary bg-accent',
+                    )}
+                  >
+                    <UploadCloud className="size-5 text-muted-foreground" aria-hidden="true" />
+                    <span className="text-sm">
+                      {fileName ?? 'Datei hierher ziehen oder auswählen'}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      PDF, TXT oder MD, bis 10 MB. Ein PDF braucht eine
+                      Textebene, ein reiner Scan lässt sich nicht auslesen.
+                    </span>
+                  </label>
                 </Field>
               </FieldGroup>
-
-              <p className="flex items-start gap-2 text-xs text-muted-foreground">
-                <UploadCloud className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                PDF, TXT oder MD, bis 10 MB. Ein PDF braucht eine Textebene, ein
-                reiner Scan lässt sich nicht auslesen.
-              </p>
 
               <Button type="submit" disabled={pending}>
                 {pending ? 'Wird gelesen…' : 'Hochladen'}
@@ -150,7 +200,7 @@ export function AddSourceDialog({
         ) : null}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="outline" onClick={close}>
             Schließen
           </Button>
         </DialogFooter>
