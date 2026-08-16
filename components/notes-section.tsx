@@ -27,12 +27,13 @@ import {
   deleteNoteAction,
   updateNoteAction,
 } from '@/lib/note-actions'
+import { cn } from '@/lib/utils'
 
 /** Null id means a new note, an id means the existing one is being edited. */
 type Draft = { id: string | null; title: string; body: string }
 
 export function NotesSection() {
-  const { notebook, notes } = useNotebookStore()
+  const { notebook, notes, openSourceId, openSource } = useNotebookStore()
   const [draft, setDraft] = useState<Draft | null>(null)
   const [pending, startTransition] = useTransition()
 
@@ -40,10 +41,7 @@ export function NotesSection() {
     event.preventDefault()
     if (!draft) return
 
-    const fields = new FormData(event.currentTarget)
-    const title = String(fields.get('title') ?? '')
-    const body = String(fields.get('body') ?? '')
-    const { id } = draft
+    const { id, title, body } = draft
 
     startTransition(async () => {
       // The action revalidates the page, so the list comes back from the
@@ -96,17 +94,37 @@ export function NotesSection() {
       ) : (
         <div className="flex flex-col gap-2">
           {notes.map((note) => (
-            <Item key={note.id} variant="outline" size="sm">
+            <Item
+              key={note.id}
+              variant="outline"
+              size="sm"
+              className={cn(
+                'relative cursor-pointer focus-within:ring-[3px] focus-within:ring-ring/40',
+                openSourceId === note.id ? 'bg-accent' : 'hover:bg-accent/50',
+              )}
+            >
               <ItemMedia variant="icon">
                 <NotebookPen />
               </ItemMedia>
               <ItemContent>
-                <ItemTitle>{note.title}</ItemTitle>
+                <ItemTitle>
+                  {/* A note is a source, so it opens in the same reader as one.
+                      The title covers the row rather than the row being a
+                      button, which would hold the two buttons next to it. */}
+                  <button
+                    type="button"
+                    onClick={() => openSource(note.id)}
+                    aria-label={`${note.title} öffnen`}
+                    className="text-left after:absolute after:inset-0 focus-visible:outline-none"
+                  >
+                    {note.title}
+                  </button>
+                </ItemTitle>
                 <ItemDescription className="line-clamp-2">
                   {note.content}
                 </ItemDescription>
               </ItemContent>
-              <ItemActions>
+              <ItemActions className="relative z-10">
                 <Button
                   variant="ghost"
                   size="icon-sm"
@@ -139,13 +157,10 @@ export function NotesSection() {
 
       <Dialog open={draft !== null} onOpenChange={() => setDraft(null)}>
         <DialogContent className="sm:max-w-lg">
-          {/* Keyed, so switching from one note to another really refills the
-              fields instead of keeping the first defaultValue. */}
-          <form
-            key={draft?.id ?? 'new'}
-            onSubmit={save}
-            className="flex flex-col gap-4"
-          >
+          {/* The fields are controlled by the draft. Uncontrolled ones would
+              have to change their default value every time the dialog opens on
+              another note, and Base UI rightly complains about that. */}
+          <form onSubmit={save} className="flex flex-col gap-4">
             <DialogHeader>
               <DialogTitle>
                 {draft?.id ? 'Notiz bearbeiten' : 'Neue Notiz'}
@@ -153,15 +168,23 @@ export function NotesSection() {
             </DialogHeader>
 
             <Input
-              name="title"
-              defaultValue={draft?.title}
+              value={draft?.title ?? ''}
+              onChange={(event) =>
+                setDraft((current) =>
+                  current ? { ...current, title: event.target.value } : current,
+                )
+              }
               autoFocus
               aria-label="Titel der Notiz"
               placeholder="Titel"
             />
             <Textarea
-              name="body"
-              defaultValue={draft?.body}
+              value={draft?.body ?? ''}
+              onChange={(event) =>
+                setDraft((current) =>
+                  current ? { ...current, body: event.target.value } : current,
+                )
+              }
               aria-label="Text der Notiz"
               placeholder="Text"
               rows={8}

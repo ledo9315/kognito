@@ -13,11 +13,15 @@ import {
   X,
 } from 'lucide-react'
 import { AudioPlayer } from '@/components/audio-player'
-import { useNotebookStore } from '@/components/notebook-store'
+import {
+  useClosingReader,
+  useNotebookStore,
+} from '@/components/notebook-store'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { artifactLabels, artifactMeta } from '@/lib/artifact-kinds'
+import { cn } from '@/lib/utils'
 import { readAudioOverview } from '@/lib/audio'
 import { readBriefing, type Briefing } from '@/lib/briefing'
 import { readFaq, type Faq } from '@/lib/faq'
@@ -40,6 +44,7 @@ const icons = {
 export function ArtifactReader() {
   const { artifacts, openArtifactId, openArtifact } = useNotebookStore()
   const artifact = artifacts.find((candidate) => candidate.id === openArtifactId)
+  const { closing, startClosing } = useClosingReader(() => openArtifact(null))
 
   if (!artifact) return null
 
@@ -48,7 +53,14 @@ export function ArtifactReader() {
   const Icon = icons[artifact.kind]
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-card">
+    <div
+      className={cn(
+        'flex h-full min-h-0 flex-col bg-card duration-200',
+        closing
+          ? 'animate-out fade-out-0 slide-out-to-right-2'
+          : 'animate-in fade-in-0 slide-in-from-right-2',
+      )}
+    >
       <header className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
         <div className="flex min-w-0 flex-col gap-1.5">
           <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -68,7 +80,7 @@ export function ArtifactReader() {
         <Button
           variant="ghost"
           size="icon-sm"
-          onClick={() => openArtifact(null)}
+          onClick={startClosing}
           aria-label={`${label} schließen`}
         >
           <X />
