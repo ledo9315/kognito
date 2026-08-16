@@ -5,8 +5,9 @@ import {
   createNotebook,
   deleteNotebook,
   findNotebook,
+  isEmoji,
   listNotebooks,
-  renameNotebook,
+  updateNotebook,
 } from '@/lib/notebooks'
 import { saveMessage } from '@/lib/messages'
 import { createSource } from '@/lib/sources'
@@ -49,24 +50,41 @@ describe('owner scoping', () => {
     expect(await findNotebook(notebookOfAlice.id, alice, database.db)).not.toBeNull()
   })
 
-  it('refuses to rename or delete a notebook of another owner', async () => {
+  it('refuses to edit or delete a notebook of another owner', async () => {
     const alice = await createUser('alice')
     const bob = await createUser('bob')
     const notebookOfAlice = await createNotebook(alice, 'Privat', database.db)
 
-    expect(await renameNotebook(notebookOfAlice.id, bob, 'Gekapert', database.db)).toBe(false)
+    expect(
+      await updateNotebook(
+        notebookOfAlice.id,
+        bob,
+        { title: 'Gekapert', emoji: '🏴' },
+        database.db,
+      ),
+    ).toBe(false)
     expect(await deleteNotebook(notebookOfAlice.id, bob, database.db)).toBe(false)
 
     const stillThere = await findNotebook(notebookOfAlice.id, alice, database.db)
     expect(stillThere?.title).toBe('Privat')
   })
 
-  it('renames and deletes for the actual owner', async () => {
+  it('edits and deletes for the actual owner', async () => {
     const alice = await createUser('alice')
     const notebookOfAlice = await createNotebook(alice, 'Entwurf', database.db)
 
-    expect(await renameNotebook(notebookOfAlice.id, alice, 'Endfassung', database.db)).toBe(true)
-    expect((await findNotebook(notebookOfAlice.id, alice, database.db))?.title).toBe('Endfassung')
+    expect(
+      await updateNotebook(
+        notebookOfAlice.id,
+        alice,
+        { title: 'Endfassung', emoji: '🎓' },
+        database.db,
+      ),
+    ).toBe(true)
+
+    const renamed = await findNotebook(notebookOfAlice.id, alice, database.db)
+    expect(renamed?.title).toBe('Endfassung')
+    expect(renamed?.emoji).toBe('🎓')
 
     expect(await deleteNotebook(notebookOfAlice.id, alice, database.db)).toBe(true)
     expect(await findNotebook(notebookOfAlice.id, alice, database.db)).toBeNull()
@@ -157,5 +175,21 @@ describe('the overview list', () => {
     const rows = await listNotebooks(alice, database.db)
 
     expect(rows.map((row) => row.id)).toEqual(['newer', 'older'])
+  })
+})
+
+describe('the emoji of a notebook', () => {
+  it('takes a single pictograph, with or without its trimmings', () => {
+    expect(isEmoji('📓')).toBe(true)
+    expect(isEmoji('⚖️')).toBe(true)
+    expect(isEmoji('👍🏽')).toBe(true)
+    expect(isEmoji('👩‍🔬')).toBe(true)
+  })
+
+  it('refuses text, several emoji, and nothing at all', () => {
+    expect(isEmoji('Notizbuch')).toBe(false)
+    expect(isEmoji('📓📗')).toBe(false)
+    expect(isEmoji('📓 daneben')).toBe(false)
+    expect(isEmoji('')).toBe(false)
   })
 })

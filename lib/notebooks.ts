@@ -19,6 +19,23 @@ export function listNotebooks(ownerId: string, db: Database = getDb()) {
     .orderBy(desc(notebook.updatedAt))
 }
 
+/**
+ * Whether the string is a single emoji.
+ *
+ * It may carry a skin tone, a variation selector and further parts joined with
+ * a zero width joiner, which is what a family or a profession is made of.
+ * Anything else, above all ordinary text, is refused: the value goes straight
+ * into a card, where a word would break the layout.
+ *
+ * ponytail: no flags, those are two regional indicators rather than a
+ * pictograph, and no keycaps. Both need their own alternative in the pattern.
+ */
+export function isEmoji(value: string) {
+  return /^\p{Extended_Pictographic}(\p{Emoji_Modifier}|\uFE0F|\u200D\p{Extended_Pictographic})*$/u.test(
+    value,
+  )
+}
+
 export async function findNotebook(
   id: string,
   ownerId: string,
@@ -47,15 +64,15 @@ export async function createNotebook(
 }
 
 /** Returns false when the notebook does not exist or belongs to someone else. */
-export async function renameNotebook(
+export async function updateNotebook(
   id: string,
   ownerId: string,
-  title: string,
+  values: { title: string; emoji: string },
   db: Database = getDb(),
 ) {
   const rows = await db
     .update(notebook)
-    .set({ title })
+    .set(values)
     .where(and(eq(notebook.id, id), eq(notebook.ownerId, ownerId)))
     .returning({ id: notebook.id })
 

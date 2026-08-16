@@ -6,7 +6,8 @@ import { z } from 'zod'
 import {
   createNotebook,
   deleteNotebook,
-  renameNotebook,
+  isEmoji,
+  updateNotebook,
 } from '@/lib/notebooks'
 import { requireOwnerId } from '@/lib/session'
 
@@ -32,9 +33,10 @@ export async function createNotebookAction(
   redirect(`/notebook/${created.id}`)
 }
 
-export async function renameNotebookAction(
+export async function updateNotebookAction(
   notebookId: string,
   title: string,
+  emoji: string,
 ): Promise<NotebookFormState> {
   const id = z.uuid().safeParse(notebookId)
   if (!id.success) return { error: 'Unbekanntes Notizbuch.' }
@@ -42,12 +44,14 @@ export async function renameNotebookAction(
   const parsed = Title.safeParse(title)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const renamed = await renameNotebook(
-    id.data,
-    await requireOwnerId(),
-    parsed.data,
-  )
-  if (!renamed) return { error: 'Unbekanntes Notizbuch.' }
+  const icon = emoji.trim()
+  if (!isEmoji(icon)) return { error: 'Bitte wähle ein einzelnes Emoji.' }
+
+  const updated = await updateNotebook(id.data, await requireOwnerId(), {
+    title: parsed.data,
+    emoji: icon,
+  })
+  if (!updated) return { error: 'Unbekanntes Notizbuch.' }
 
   revalidatePath('/')
   revalidatePath(`/notebook/${id.data}`)

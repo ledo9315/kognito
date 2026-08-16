@@ -19,6 +19,8 @@ import {
 } from '@/components/ui/input-group'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { NewNotebookDialog } from '@/components/new-notebook-dialog'
+import { NotebookEmoji } from '@/components/notebook-emoji'
+import { NotebookMenu } from '@/components/notebook-menu'
 import type { NotebookSummary } from '@/lib/notebooks'
 
 type NotebookCard = NotebookSummary & { updatedLabel: string }
@@ -139,48 +141,74 @@ export function NotebookGrid({ notebooks }: { notebooks: NotebookCard[] }) {
           />
 
           {filteredNotebooks.map((notebook) => (
-            <Link
+            <div
               key={notebook.id}
-              href={`/notebook/${notebook.id}`}
-              className="group flex min-h-40 flex-col justify-between rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/30 hover:shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)] focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none"
+              className="group relative flex min-h-40 flex-col justify-between rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/30 hover:shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)] focus-within:ring-[3px] focus-within:ring-ring/40"
             >
-              <span aria-hidden="true" className="text-2xl leading-none">
-                {notebook.emoji}
-              </span>
+              <NotebookEmoji
+                notebookId={notebook.id}
+                title={notebook.title}
+                emoji={notebook.emoji}
+                className="relative z-10 size-10 self-start text-2xl"
+              />
+
+              <NotebookMenu
+                notebookId={notebook.id}
+                title={notebook.title}
+                emoji={notebook.emoji}
+                className="absolute top-3 right-3 z-10 text-muted-foreground"
+              />
+
               <span className="flex flex-col gap-2">
-                <span className="text-[15px] leading-snug font-medium text-pretty text-card-foreground">
+                {/* The link covers the card, so the whole tile is clickable
+                    without holding the menu button inside an anchor. */}
+                <Link
+                  href={`/notebook/${notebook.id}`}
+                  className="text-[15px] leading-snug font-medium text-pretty text-card-foreground after:absolute after:inset-0 focus-visible:outline-none"
+                >
                   {notebook.title}
-                </span>
+                </Link>
                 <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span>{notebook.updatedLabel}</span>
                   <span aria-hidden="true">·</span>
                   <span>{sourceLabel(notebook.sourceCount)}</span>
                 </span>
               </span>
-            </Link>
+            </div>
           ))}
         </div>
       ) : (
         <div className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
           {filteredNotebooks.map((notebook) => (
-            <Link
+            <div
               key={notebook.id}
-              href={`/notebook/${notebook.id}`}
-              className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/50 focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none"
+              className="group relative flex items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/50 focus-within:ring-[3px] focus-within:ring-ring/40"
             >
-              <span aria-hidden="true" className="text-lg leading-none">
-                {notebook.emoji}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">
+              <NotebookEmoji
+                notebookId={notebook.id}
+                title={notebook.title}
+                emoji={notebook.emoji}
+                className="relative z-10 size-8 text-lg"
+              />
+              <Link
+                href={`/notebook/${notebook.id}`}
+                className="min-w-0 flex-1 truncate text-sm font-medium after:absolute after:inset-0 focus-visible:outline-none"
+              >
                 {notebook.title}
-              </span>
+              </Link>
               <span className="hidden text-xs text-muted-foreground sm:block">
                 {sourceLabel(notebook.sourceCount)}
               </span>
               <span className="w-24 shrink-0 text-right text-xs text-muted-foreground">
                 {notebook.updatedLabel}
               </span>
-            </Link>
+              <NotebookMenu
+                notebookId={notebook.id}
+                title={notebook.title}
+                emoji={notebook.emoji}
+                className="relative z-10 text-muted-foreground"
+              />
+            </div>
           ))}
         </div>
       )}
