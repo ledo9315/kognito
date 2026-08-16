@@ -1,8 +1,8 @@
 import { AppLogo } from '@/components/app-logo'
 import { Landing } from '@/components/landing'
-import { NotebookGrid } from '@/components/notebook-grid'
+import { NotebookGrid } from '@/features/notebooks/components/notebook-grid'
 import { UserMenu } from '@/components/user-menu'
-import { listNotebooks } from '@/lib/notebooks'
+import { listNotebooks } from '@/features/notebooks/notebooks'
 import { updatedLabel } from '@/lib/relative-time'
 import { getSession } from '@/lib/session'
 

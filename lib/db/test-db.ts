@@ -11,7 +11,7 @@ import * as schema from '@/lib/db/schema'
  *
  * The client is cast to the production type. pglite and the Neon driver build
  * structurally different drizzle instances, but the query builders used in
- * lib/notebooks.ts are identical, so the cast lets those functions be tested
+ * features/notebooks/notebooks.ts are identical, so the cast lets those functions be tested
  * without a network database. It lives here, once, instead of in every test.
  */
 export async function createTestDb() {
