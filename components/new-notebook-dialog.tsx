@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState, type ReactElement } from 'react'
+import { EmojiChoice } from '@/components/notebook-emoji'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -20,6 +21,7 @@ import {
 
 export function NewNotebookDialog({ trigger }: { trigger: ReactElement }) {
   const [open, setOpen] = useState(false)
+  const [emoji, setEmoji] = useState('📓')
   const [state, action, pending] = useActionState<NotebookFormState, FormData>(
     createNotebookAction,
     null,
@@ -44,12 +46,23 @@ export function NewNotebookDialog({ trigger }: { trigger: ReactElement }) {
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="notebook-title">Titel</FieldLabel>
-              <Input
-                id="notebook-title"
-                name="title"
-                autoFocus
-                placeholder="z. B. Recherche Q4"
-              />
+              <div className="flex items-center gap-2">
+                {/* The symbol travels with the form rather than being written
+                    on its own, the notebook does not exist yet. */}
+                <input type="hidden" name="emoji" value={emoji} />
+                <EmojiChoice
+                  value={emoji}
+                  label="Symbol wählen"
+                  onSelect={setEmoji}
+                  className="size-8 shrink-0 rounded-lg border border-input text-base"
+                />
+                <Input
+                  id="notebook-title"
+                  name="title"
+                  autoFocus
+                  placeholder="z. B. Recherche Q4"
+                />
+              </div>
             </Field>
           </FieldGroup>
 
