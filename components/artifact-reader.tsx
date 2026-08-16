@@ -73,7 +73,7 @@ export function ArtifactReader() {
               </>
             ) : null}
           </span>
-          <h2 className="text-sm leading-snug font-medium text-pretty">
+          <h2 className="text-sm leading-snug font-medium text-pretty [overflow-wrap:anywhere]">
             {artifact.title}
           </h2>
         </div>

@@ -119,7 +119,7 @@ export function SourcesPanel() {
                     >
                       <span
                         className={cn(
-                          'line-clamp-2 text-[13px] leading-snug',
+                          'line-clamp-2 wrap-anywhere text-[13px] leading-snug',
                           source.selected
                             ? 'text-foreground'
                             : 'text-muted-foreground',
@@ -128,7 +128,7 @@ export function SourcesPanel() {
                         {source.title}
                       </span>
                       {source.summary ? (
-                        <span className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+                        <span className="line-clamp-2 wrap-anywhere text-[11px] leading-snug text-muted-foreground">
                           {source.summary}
                         </span>
                       ) : null}
