@@ -12,6 +12,12 @@ import { inReadingOrder, windowPassages } from '@/lib/context'
 import { getDb, type Database } from '@/lib/db'
 import { Faq, faqRules, mergeFaqs, type Faq as FaqType } from '@/lib/faq'
 import {
+  Flashcards,
+  flashcardsRules,
+  mergeFlashcards,
+  type Flashcards as FlashcardsType,
+} from '@/lib/flashcards'
+import {
   datedOnly,
   inTimeOrder,
   mergeTimelines,
@@ -67,6 +73,14 @@ export function generateFaq(
   return generate(Faq, faqRules, mergeFaqs, input, options)
 }
 
+export function generateFlashcards(
+  input: Selection,
+  options: GenerationOptions = {},
+): Promise<FlashcardsType> {
+
+  return generate(Flashcards, flashcardsRules, mergeFlashcards, input, options)
+}
+
 export async function generateTimeline(
   input: Selection,
   options: GenerationOptions = {},
@@ -79,19 +93,8 @@ export async function generateTimeline(
     options,
   )
 
-  // The rules ask for points in time and the filter enforces it, because a
-  // rule is a request and a model may read a duration as a date. Not empty
-  // is not the same as usable, so the check has to come after the filter.
   const entries = datedOnly(timeline.entries)
-
-  // The schema allows an empty list so that a source without dates has a
-  // truthful answer to give. What it must not become is a stored artifact
-  // that only says there is nothing.
   if (entries.length === 0) throw new NoDatesError()
-
-  // Chronology is decided here, where a test can check it, and not by
-  // asking the model for it. Windows are read side by side, so this is also
-  // what puts a late window's early date back where it belongs.
   return { ...timeline, entries: inTimeOrder(entries) }
 }
 
@@ -119,7 +122,7 @@ async function generate<T>(
   // Side by side, because the windows do not depend on each other and a
   // reader should not wait for three round trips in a row.
   const parts = await Promise.all(
-    windows.map((passages) => once(schema, rules, passages, options)),
+    windows.map((passages) => askOnce(schema, rules, passages, options)),
   )
 
   // The ordinary selection is one window, and then there is nothing to
@@ -127,7 +130,7 @@ async function generate<T>(
   return parts.length === 1 ? parts[0] : merge(parts)
 }
 
-function once<T>(
+function askOnce<T>(
   schema: z.ZodType<T>,
   rules: string,
   passages: string,

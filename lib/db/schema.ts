@@ -207,7 +207,7 @@ export const message = pgTable(
   (table) => [index('message_notebook_idx').on(table.notebookId, table.createdAt)],
 )
 
-export const artifactKinds = ['briefing', 'faq', 'timeline'] as const
+export const artifactKinds = ['briefing', 'faq', 'timeline', 'flashcards'] as const
 export type ArtifactKind = (typeof artifactKinds)[number]
 
 export const artifact = pgTable(

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   generateBriefing,
   generateFaq,
+  generateFlashcards,
   generateTimeline,
   NoDatesError,
   NoSourcesError,
@@ -13,6 +14,12 @@ import { maxPromptCharacters } from '@/lib/config'
 import { createArtifact, deleteArtifact, listArtifacts } from '@/lib/artifacts'
 import { Briefing, briefingMeta, mergeBriefings, readBriefing } from '@/lib/briefing'
 import { Faq, faqMeta, mergeFaqs, readFaq } from '@/lib/faq'
+import {
+  Flashcards,
+  flashcardsMeta,
+  mergeFlashcards,
+  readFlashcards,
+} from '@/lib/flashcards'
 import {
   datedOnly,
   inTimeOrder,
@@ -55,6 +62,14 @@ const briefing = {
     { heading: 'Migrationen', points: ['Migrationen entstehen mit Drizzle.'] },
   ],
   openQuestions: ['Wird pgvector direkt mitgenutzt?'],
+}
+
+const flashcards = {
+  title: 'Architektur zum Einprägen',
+  cards: [
+    { front: 'Welche Datenbank kommt zum Einsatz?', back: 'Neon Postgres.' },
+    { front: 'Womit entstehen die Migrationen?', back: 'Mit Drizzle.' },
+  ],
 }
 
 const faq = {
@@ -224,6 +239,69 @@ describe('generating an faq', () => {
     await expect(
       generateFaq({ sourceIds: [source!.id], ownerId: 'bob' }, { model, db: database.db }),
     ).rejects.toBeInstanceOf(NoSourcesError)
+  })
+})
+
+describe('generating flashcards', () => {
+  it('returns cards that match the schema, asked to check and not to explain', async () => {
+    const where = await setUp('alice')
+    const source = await createSource(
+      {
+        ...where,
+        title: 'Architektur',
+        kind: 'text',
+        text: 'Als Datenbank dient Neon Postgres. Migrationen entstehen mit Drizzle.',
+      },
+      database.db,
+    )
+    const { model, seen } = mockModel(flashcards)
+
+    const generated = await generateFlashcards(
+      { sourceIds: [source!.id], ownerId: where.ownerId },
+      { model, db: database.db },
+    )
+
+    expect(Flashcards.safeParse(generated).success).toBe(true)
+    expect(generated.cards).toHaveLength(2)
+    // The same passages as every other kind, and the rules that keep a card
+    // apart from an faq entry.
+    expect(textOf(seen.prompt)).toContain('Als Datenbank dient Neon Postgres.')
+    expect(textOf(seen.prompt)).toContain('Zwei Dinge sind zwei Karten.')
+  })
+
+  it('refuses a selection without readable text', async () => {
+    const where = await setUp('alice')
+    const { model } = mockModel(flashcards)
+
+    await expect(
+      generateFlashcards(
+        { sourceIds: [], ownerId: where.ownerId },
+        { model, db: database.db },
+      ),
+    ).rejects.toBeInstanceOf(NoSourcesError)
+  })
+
+  it('does not read the sources of another account', async () => {
+    const hers = await setUp('alice')
+    await setUp('bob')
+    const source = await createSource(
+      { ...hers, title: 'Privat', kind: 'text', text: 'Vertraulicher Text.' },
+      database.db,
+    )
+    const { model } = mockModel(flashcards)
+
+    await expect(
+      generateFlashcards(
+        { sourceIds: [source!.id], ownerId: 'bob' },
+        { model, db: database.db },
+      ),
+    ).rejects.toBeInstanceOf(NoSourcesError)
+  })
+
+  it('reads a stored set back and does not confuse it with an faq', () => {
+    expect(readFlashcards(flashcards)).toEqual(flashcards)
+    expect(readFlashcards(faq)).toBeNull()
+    expect(readFaq(flashcards)).toBeNull()
   })
 })
 
@@ -415,6 +493,7 @@ describe('storing an artifact', () => {
       '2 Abschnitte · 3 Punkte',
     )
     expect(artifactMeta({ kind: 'timeline', content: timeline })).toBe('3 Ereignisse')
+    expect(artifactMeta({ kind: 'flashcards', content: flashcards })).toBe('2 Karten')
     expect(artifactMeta({ kind: 'faq', content: { headline: 'anderes' } })).toBeNull()
   })
 
@@ -491,6 +570,9 @@ describe('the meta line', () => {
       } as Briefing),
     ).toBe('1 Abschnitt · 1 Punkt')
     expect(faqMeta({ ...faq, entries: [faq.entries[0]] } as Faq)).toBe('1 Frage')
+    expect(
+      flashcardsMeta({ ...flashcards, cards: [flashcards.cards[0]] } as Flashcards),
+    ).toBe('1 Karte')
   })
 })
 
@@ -649,6 +731,23 @@ describe('merging the answers of several windows', () => {
 
     expect(merged.entries).toHaveLength(faq.entries.length + 1)
     expect(merged.entries.at(-1)?.question).toBe('Wer betreibt das?')
+  })
+
+  it('writes the card two windows both thought of only once', () => {
+    const merged = mergeFlashcards([
+      flashcards as Flashcards,
+      {
+        title: 'Zweite Hälfte',
+        cards: [
+          { front: flashcards.cards[0].front.toUpperCase(), back: 'Noch einmal dasselbe.' },
+          { front: 'Wer betreibt das?', back: 'Das steht nicht im Text.' },
+        ],
+      },
+    ])
+
+    expect(merged.cards).toHaveLength(flashcards.cards.length + 1)
+    expect(merged.cards.at(-1)?.front).toBe('Wer betreibt das?')
+    expect(merged.title).toBe(flashcards.title)
   })
 
   it('drops the event two windows both saw and keeps two events of one day', () => {
