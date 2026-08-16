@@ -62,7 +62,7 @@ function Workspace() {
   const reader = openArtifactId ? <ArtifactReader /> : <SourceReader />
 
   return (
-    <div className="flex h-svh flex-col overflow-hidden bg-muted/40">
+    <div className="flex h-svh flex-col overflow-hidden bg-indigo-100/60">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-3 sm:px-4">
         <Button
           render={<Link href="/" aria-label="Zur Übersicht" />}

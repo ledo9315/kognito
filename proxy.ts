@@ -27,5 +27,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/notebook/:path*'],
+  // `/` is public: it serves the landing page without a session and the
+  // overview with one, so only the notebooks are redirected away from.
+  matcher: ['/notebook/:path*'],
 }

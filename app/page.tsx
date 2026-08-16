@@ -1,14 +1,19 @@
 import { AppLogo } from '@/components/app-logo'
+import { Landing } from '@/components/landing'
 import { NotebookGrid } from '@/components/notebook-grid'
 import { UserMenu } from '@/components/user-menu'
 import { listNotebooks } from '@/lib/notebooks'
 import { updatedLabel } from '@/lib/relative-time'
-import { requireSession } from '@/lib/session'
+import { getSession } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 export default async function Page() {
-  const session = await requireSession()
+  // The one route that serves two pages: the landing page to a visitor, the
+  // overview to an account. Everything else stays behind requireSession().
+  const session = await getSession()
+  if (!session) return <Landing />
+
   const rows = await listNotebooks(session.user.id)
 
   const notebooks = rows.map((row) => ({

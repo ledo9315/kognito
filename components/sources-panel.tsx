@@ -47,8 +47,8 @@ export function SourcesPanel() {
       </header>
 
       {sources.length === 0 ? (
-        <div className="flex flex-1 items-center p-4">
-          <Empty className="border border-dashed">
+        <div className="group relative flex flex-1 items-center p-4">
+          <Empty className="border border-dashed transition-colors group-hover:border-primary/40 group-hover:bg-accent/40">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <FileSearch />
@@ -60,6 +60,20 @@ export function SourcesPanel() {
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
+
+          {/* The button covers the empty state instead of holding it: the
+              text is made of divs, which a button may not contain. */}
+          <AddSourceDialog
+            notebookId={notebook.id}
+            trigger={
+              <button
+                type="button"
+                className="absolute inset-4 rounded-xl focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none"
+              >
+                <span className="sr-only">Quelle hinzufügen</span>
+              </button>
+            }
+          />
         </div>
       ) : (
         <>
