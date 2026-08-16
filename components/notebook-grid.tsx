@@ -164,7 +164,7 @@ export function NotebookGrid({ notebooks }: { notebooks: NotebookCard[] }) {
                     without holding the menu button inside an anchor. */}
                 <Link
                   href={`/notebook/${notebook.id}`}
-                  className="text-[15px] leading-snug font-medium text-pretty text-card-foreground after:absolute after:inset-0 focus-visible:outline-none"
+                  className="text-[15px] leading-snug font-medium text-pretty text-card-foreground [overflow-wrap:anywhere] after:absolute after:inset-0 focus-visible:outline-none"
                 >
                   {notebook.title}
                 </Link>
