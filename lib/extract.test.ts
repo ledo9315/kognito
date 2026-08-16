@@ -5,6 +5,7 @@ import {
   extractFromFile,
   extractFromUrl,
   isPrivateAddress,
+  unwrapLines,
 } from '@/lib/extract'
 
 async function fixture(name: string, type: string) {
@@ -94,6 +95,28 @@ describe('normalising', () => {
     const { text } = await extractFromFile(file)
 
     expect(text).toBe('Erste Zeile\n\nZweite Zeile mit Leerzeichen')
+  })
+
+  it('joins the lines a pdf was wrapped at back into paragraphs', () => {
+    const pdf = [
+      'Abstract',
+      'Veranstaltungsinformationen sind im Web uber eine Vielzahl heterogener',
+      'Quellen verstreut: Veranstalter und Veranstaltungsorte pflegen ihre Pro-',
+      'gramme auf eigenen Webseiten.',
+      '',
+      'Klassische Web-',
+      'Scraping-Verfahren skalieren schlecht.',
+    ].join('\n')
+
+    expect(unwrapLines(pdf)).toBe(
+      [
+        'Abstract',
+        'Veranstaltungsinformationen sind im Web uber eine Vielzahl heterogener Quellen verstreut: Veranstalter und Veranstaltungsorte pflegen ihre Programme auf eigenen Webseiten.',
+        '',
+        'Klassische Web-',
+        'Scraping-Verfahren skalieren schlecht.',
+      ].join('\n'),
+    )
   })
 })
 

@@ -71,10 +71,17 @@ export async function extractFromFile(file: File): Promise<Extraction> {
   )
 }
 
+// The pdf.js build inside unpdf sums font table and column sizes with
+// Math.sumPrecise, which Node 24 does not ship yet. Without it every embedded
+// font logs a warning while it is being read. The values are integers, so a
+// plain sum is exact and the precise variant buys nothing here.
+const math = Math as { sumPrecise?: (values: Iterable<number>) => number }
+math.sumPrecise ??= (values) => [...values].reduce((total, value) => total + value, 0)
+
 async function readPdf(file: File) {
   const document = await getDocumentProxy(new Uint8Array(await file.arrayBuffer()))
   const { text } = await extractText(document, { mergePages: true })
-  const normalized = normalize(text)
+  const normalized = unwrapLines(normalize(text))
 
   // The pages parsed, they just carry no characters. That is a scan, and the
   // fix is a different file rather than a retry.
@@ -321,6 +328,43 @@ function htmlToText(html: string) {
   // parses it into a document without a body, and the text would be lost.
   const { document } = parseHTML(`<html><body>${withBreaks}</body></html>`)
   return document.body?.textContent ?? ''
+}
+
+/**
+ * Joins the visual lines of a pdf back into paragraphs.
+ *
+ * A pdf has no paragraphs, only lines placed on a page, so the extractor ends
+ * every one with a newline and the reader shows a ragged column. A line that
+ * reaches the column width was broken by the layout and continues on the next
+ * one. A shorter line ended on purpose: a heading, a list item, the last line
+ * of a paragraph.
+ *
+ * ponytail: a width heuristic, no font or coordinate data. Multi column pages
+ * and tables stay ragged, which needs the per item positions from unpdf.
+ */
+export function unwrapLines(text: string) {
+  const lines = text.split('\n')
+
+  // The 95th percentile rather than the longest line, so a single wide table
+  // row or url does not raise the width for the whole document.
+  const lengths = lines.map((line) => line.length).sort((first, second) => first - second)
+  const width = lengths[Math.floor(lengths.length * 0.95)] ?? 0
+  const wrapped = width * 0.8
+
+  return lines.reduce((text, line, index) => {
+    if (index === 0) return line
+
+    const previous = lines[index - 1]
+    if (!line || previous.length < wrapped) return `${text}\n${line}`
+
+    // A word broken across lines keeps its hyphen only when the next line
+    // starts a new word, as in "Web-\nScraping".
+    if (/\p{Ll}-$/u.test(previous) && /^\p{Ll}/u.test(line)) {
+      return `${text.slice(0, -1)}${line}`
+    }
+
+    return `${text} ${line}`
+  }, '')
 }
 
 function normalize(text: string) {
