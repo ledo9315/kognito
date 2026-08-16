@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultModel, streamAnswer } from '@/lib/chat'
+import { suggestFollowUps } from '@/lib/follow-ups'
 import { createTestDb } from '@/lib/db/test-db'
 import { user } from '@/lib/db/schema'
 import { createNotebook } from '@/lib/notebooks'
@@ -65,6 +66,22 @@ describe.runIf(process.env.LIVE_MODEL === '1')('the real model', () => {
       `\n--- Modell: ${defaultModel()} | Abschnitte: ${chunkCount}\n${answer}\n---\n`,
     )
     expect(answer).toMatch(/\[\d\]/)
+  }, 60_000)
+
+  it('suggests what to ask next', async () => {
+    const question = 'Warum verzögert sich das Projekt?'
+    const { answer } = await ask(question)
+    const started = performance.now()
+    const questions = await suggestFollowUps(question, answer)
+    const seconds = ((performance.now() - started) / 1000).toFixed(1)
+
+    process.stdout.write(
+      `\n--- Weiterfragen nach ${seconds}s:\n${questions.join('\n')}\n---\n`,
+    )
+    expect(questions).toHaveLength(3)
+    for (const suggestion of questions) {
+      expect(suggestion.length).toBeLessThanOrEqual(120)
+    }
   }, 60_000)
 
   it('says so when the answer is not in the sources', async () => {

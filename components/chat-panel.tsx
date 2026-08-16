@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { ArrowUp, Copy, NotebookPen, RotateCcw, Sparkles } from 'lucide-react'
@@ -32,7 +32,10 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from '@/components/ui/message-scroller'
-import { clearChatAction } from '@/lib/chat-actions'
+import {
+  clearChatAction,
+  suggestFollowUpsAction,
+} from '@/lib/chat-actions'
 import { suggestedQuestions } from '@/lib/data'
 import type { Citation } from '@/lib/db/schema'
 import type { MessageRow } from '@/lib/messages'
@@ -65,18 +68,56 @@ function getUserFriendlyErrorMessage(error: Error) {
   return 'Die Antwort konnte nicht geladen werden. Bitte versuche es noch einmal.'
 }
 
+function SuggestionButton({
+  question,
+  disabled,
+  onClick,
+}: {
+  question: string
+  disabled?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-3.5 py-2.5 text-left text-[13px] transition-colors hover:border-primary/40 hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
+    >
+      <Sparkles
+        className="size-3.5 shrink-0 text-muted-foreground"
+        aria-hidden="true"
+      />
+      {question}
+    </button>
+  )
+}
+
 export function ChatPanel() {
   const { notebook, sources, history, openSource } = useNotebookStore()
   const [draft, setDraft] = useState('')
   const [failure, setFailure] = useState<string | null>(null)
   const [clearing, startClearing] = useTransition()
   const [saving, startSaving] = useTransition()
+  /** The questions under the newest answer, written after it has arrived. */
+  const [followUps, setFollowUps] = useState<string[]>([])
+  /** The question of the running turn. onFinish hands over the answer alone,
+   *  and the suggestions are written from both halves. */
+  const asked = useRef<string | null>(null)
 
   const { messages, sendMessage, status, setMessages } = useChat<ChatMessage>(
     {
       messages: history.map(toUIMessage),
       transport: new DefaultChatTransport({ api: '/api/chat' }),
       onError: (error) => setFailure(getUserFriendlyErrorMessage(error)),
+      onFinish: ({ message }) => {
+        const question = asked.current
+        if (!question) return
+        void suggestFollowUpsAction(
+          question,
+          extractMessageText(message),
+        ).then(setFollowUps)
+      },
     }
   )
 
@@ -94,6 +135,8 @@ export function ChatPanel() {
     if (!value || busy || selectedCount === 0) return
     setDraft('')
     setFailure(null)
+    setFollowUps([])
+    asked.current = value
     void sendMessage(
       { text: value },
       {
@@ -124,6 +167,7 @@ export function ChatPanel() {
                 await clearChatAction(notebook.id)
                 setMessages([])
                 setFailure(null)
+                setFollowUps([])
               })
             }
           >
@@ -149,19 +193,12 @@ export function ChatPanel() {
             </div>
             <div className="flex w-full max-w-md flex-col gap-2">
               {suggestedQuestions.map((question) => (
-                <button
+                <SuggestionButton
                   key={question}
-                  type="button"
+                  question={question}
                   disabled={selectedCount === 0}
                   onClick={() => send(question)}
-                  className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-3.5 py-2.5 text-left text-[13px] transition-colors hover:border-primary/40 hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
-                >
-                  <Sparkles
-                    className="size-3.5 shrink-0 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                  {question}
-                </button>
+                />
               ))}
             </div>
           </div>
@@ -259,6 +296,26 @@ export function ChatPanel() {
                                   Als Notiz
                                 </Button>
                               </MessageFooter>
+
+                              {/* Only under the newest answer. Older ones had
+                                  their suggestions when they were new, and the
+                                  question that followed is right below them. */}
+                              {message.id === latest?.id &&
+                              followUps.length > 0 ? (
+                                <div className="flex flex-col items-start gap-2 pt-1">
+                                  <span className="text-xs text-muted-foreground">
+                                    Weiterfragen
+                                  </span>
+                                  {followUps.map((question) => (
+                                    <SuggestionButton
+                                      key={question}
+                                      question={question}
+                                      disabled={busy || selectedCount === 0}
+                                      onClick={() => send(question)}
+                                    />
+                                  ))}
+                                </div>
+                              ) : null}
                             </MessageContent>
                           </Message>
                         )}
