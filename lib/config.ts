@@ -79,3 +79,16 @@ export const charactersPerSpokenMinute = 1_000
 
 /** How much of a passage a citation tooltip shows, in characters. */
 export const quoteLength = 200
+
+/** How many questions are offered after an answer. Four fill the empty chat,
+ *  three are enough under an answer that is already on the screen. */
+export const followUpCount = 3
+
+/**
+ * How much of the question and of the answer the follow-ups are written from.
+ *
+ * They are the cheap part of a turn and should stay that way. A long answer
+ * has said what it had to say in its first paragraphs, and the questions that
+ * come after it live there.
+ */
+export const maxFollowUpCharacters = 4_000
