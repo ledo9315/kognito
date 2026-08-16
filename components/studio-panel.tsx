@@ -170,16 +170,15 @@ export function StudioPanel() {
                 type="button"
                 onClick={() => generate(kind)}
                 disabled={pending !== null}
-                className="flex flex-col items-start gap-1.5 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
+                className="flex flex-col items-start gap-2 rounded-xl bg-indigo-100 p-3 text-left transition-colors hover:bg-indigo-200/70 focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
               >
-                <Icon
-                  className="size-4 text-muted-foreground"
-                  aria-hidden="true"
-                />
+                <span className="rounded-md bg-primary p-2 text-primary-foreground">
+                  <Icon className="size-4" aria-hidden="true" />
+                </span>
                 <span className="text-[13px] leading-tight font-medium">
                   {pending === kind ? 'Wird erstellt…' : label}
                 </span>
-                <span className="text-[11px] leading-tight text-muted-foreground">
+                <span className="text-[11px] leading-tight text-gray-600">
                   {hint}
                 </span>
               </button>

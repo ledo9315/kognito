@@ -43,43 +43,45 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-urbanist), var(--font-inter), ui-sans-serif,
+    sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 :root {
   color-scheme: light;
-  --background: oklch(0.985 0.002 264);
-  --foreground: oklch(0.21 0.014 266);
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.21 0 0);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.014 266);
+  --card-foreground: oklch(0.21 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.014 266);
+  --popover-foreground: oklch(0.21 0 0);
   --primary: oklch(0.51 0.185 269);
   --primary-foreground: oklch(0.99 0.003 270);
-  --secondary: oklch(0.965 0.004 264);
-  --secondary-foreground: oklch(0.28 0.015 266);
-  --muted: oklch(0.965 0.004 264);
-  --muted-foreground: oklch(0.545 0.016 266);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.269 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.552 0.016 286);
   --accent: oklch(0.955 0.014 270);
   --accent-foreground: oklch(0.42 0.15 269);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.917 0.005 264);
-  --input: oklch(0.917 0.005 264);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
   --ring: oklch(0.51 0.185 269);
   --chart-1: oklch(0.51 0.185 269);
   --chart-2: oklch(0.64 0.13 269);
   --chart-3: oklch(0.75 0.08 269);
-  --chart-4: oklch(0.545 0.016 266);
-  --chart-5: oklch(0.83 0.006 264);
+  --chart-4: oklch(0.552 0.016 286);
+  --chart-5: oklch(0.83 0 0);
   --radius: 0.8rem;
-  --sidebar: oklch(0.985 0.002 264);
-  --sidebar-foreground: oklch(0.21 0.014 266);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.21 0 0);
   --sidebar-primary: oklch(0.51 0.185 269);
   --sidebar-primary-foreground: oklch(0.99 0.003 270);
   --sidebar-accent: oklch(0.955 0.014 270);
   --sidebar-accent-foreground: oklch(0.42 0.15 269);
-  --sidebar-border: oklch(0.917 0.005 264);
+  --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.51 0.185 269);
 }
 
@@ -125,6 +127,25 @@
   body {
     @apply bg-background text-foreground;
   }
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+  }
+}
+
+/**
+ * The wash behind the hero, mixed from the three corner colours of
+ * `public/dashboard.webp`: cyan top left, periwinkle top right, steel blue
+ * at the bottom. The screenshot then sits in its own background instead of
+ * on top of a different one.
+ */
+@utility hero-mesh {
+  background-color: var(--color-white);
+  background-image:
+    radial-gradient(ellipse 60% 42% at 20% 24%, #7bc9e355, transparent 70%),
+    radial-gradient(ellipse 60% 42% at 80% 22%, #82a8e255, transparent 70%),
+    radial-gradient(ellipse 95% 58% at 50% 84%, #4b8bb3aa, transparent 72%);
 }
 
 @utility scrollbar-slim {

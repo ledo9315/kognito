@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test'
 
-test('sends anonymous visitors to the sign-in page', async ({ page }) => {
+test('shows anonymous visitors the landing page', async ({ page }) => {
   await page.goto('/')
-  await expect(page).toHaveURL(/\/sign-in/)
-  await expect(page.getByRole('heading', { name: 'Anmelden' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: /Belegte Antworten/ }),
+  ).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Anmelden' })).toBeVisible()
 })
 
 test('remembers where an anonymous visitor wanted to go', async ({ page }) => {
