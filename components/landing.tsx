@@ -159,10 +159,12 @@ export function Landing() {
       <nav
         className={`sticky top-0 z-50 border-b border-border bg-white/80 py-4 backdrop-blur ${pagePadding}`}
       >
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
+        <div className="relative mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
           <AppLogo />
 
-          <div className="hidden items-center gap-1 text-sm md:flex">
+          {/* Out of the flow, so the links sit in the middle of the page
+              instead of in the gap the logo and the buttons leave. */}
+          <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 text-sm md:flex">
             <a href="#funktionen" className="px-3 py-1 hover:text-primary">
               Funktionen
             </a>
