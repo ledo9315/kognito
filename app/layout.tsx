@@ -38,7 +38,7 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster position="bottom-right" />
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+        <Analytics />
       </body>
     </html>
   )
