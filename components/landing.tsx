@@ -352,6 +352,15 @@ export function Landing() {
       <footer className={`border-t border-border bg-gray-50 ${pagePadding}`}>
         <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 py-10 text-sm text-muted-foreground sm:flex-row sm:justify-between">
           <AppLogo />
+
+          <div className="flex items-center gap-4">
+            <Link href="/impressum" className="hover:text-primary">
+              Impressum
+            </Link>
+            <Link href="/datenschutz" className="hover:text-primary">
+              Datenschutz
+            </Link>
+          </div>
         </div>
       </footer>
     </div>
