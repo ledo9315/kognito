@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect } from 'react'
+import * as Sentry from '@sentry/nextjs'
 import { RotateCcw, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,7 +17,17 @@ import {
  * message itself is not shown: it is written for a log, not for a reader,
  * and it can carry details that do not belong on a screen.
  */
-export default function Error({ reset }: { error: Error; reset: () => void }) {
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error
+  reset: () => void
+}) {
+  useEffect(() => {
+    Sentry.captureException(error)
+  }, [error])
+
   return (
     <div className="flex min-h-svh items-center justify-center p-6">
       <Empty className="max-w-md border border-dashed">

@@ -6,3 +6,5 @@ allowBuilds:
   # Only pulled in by the shadcn CLI, not needed at runtime. Without an entry
   # here pnpm exits non-zero, which makes next build fail before it compiles.
   msw: false
+  # Downloads the sentry-cli binary that uploads source maps at build time.
+  '@sentry/cli': true
