@@ -1,3 +1,5 @@
+import { withSentryConfig } from '@sentry/nextjs'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
@@ -34,4 +36,19 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+export default withSentryConfig(nextConfig, {
+  org: 'leonid-at',
+  project: 'javascript-nextjs',
+
+  // Source map upload runs only where SENTRY_AUTH_TOKEN is set (CI, Vercel).
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Upload a wider set of client source files for readable stack traces
+  widenClientFileUpload: true,
+
+  // Same-origin proxy route for client events. The CSP above only allows
+  // connect-src 'self', and this also gets past ad blockers.
+  tunnelRoute: '/monitoring',
+
+  silent: !process.env.CI,
+})
