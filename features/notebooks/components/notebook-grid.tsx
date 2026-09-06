@@ -39,7 +39,7 @@ export function NotebookGrid({ notebooks }: { notebooks: NotebookCard[] }) {
 
   if (notebooks.length === 0) {
     return (
-      <Empty className="border border-dashed">
+      <Empty className="border border-dashed border-primary/40">
         <EmptyHeader>
           <EmptyMedia>
             {/*
@@ -118,7 +118,7 @@ export function NotebookGrid({ notebooks }: { notebooks: NotebookCard[] }) {
       </div>
 
       {filteredNotebooks.length === 0 ? (
-        <Empty className="border border-dashed">
+        <Empty>
           <EmptyHeader>
             <EmptyMedia>
               <Image

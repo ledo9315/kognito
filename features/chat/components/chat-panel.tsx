@@ -7,6 +7,7 @@ import { NotebookPen, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useNotebookStore } from '@/features/notebooks/components/notebook-store'
 import { AnswerText } from '@/features/chat/components/answer-text'
+import { AppLogo } from '@/components/app-logo'
 import { AIContextMeter } from '@/components/ui/ai-context-meter'
 import { AIConversation } from '@/components/ui/ai-conversation'
 import { AILoader } from '@/components/ui/ai-loader'
@@ -18,7 +19,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Kbd } from '@/components/ui/kbd'
 import { Marker, MarkerContent } from '@/components/ui/marker'
-import { SiriOrb } from '@/components/ui/siri-orb'
 import {
   clearChatAction,
   suggestFollowUpsAction,
@@ -38,9 +38,6 @@ const suggestedQuestions = [
   'Welche Zahlen sollte ich mir merken?',
   'Erstelle eine Gliederung für einen Vortrag',
 ]
-
-/** The orb beside every answer, small enough to sit on the first text line. */
-const AVATAR_SIZE = '26px'
 
 type ChatMessage = UIMessage<{ citations: Citation[]; omitted?: number }>
 
@@ -213,7 +210,7 @@ export function ChatPanel() {
       <div className="flex min-h-0 flex-1 flex-col">
         {isEmpty ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-10 text-center">
-            <SiriOrb size="64px" state="idle" />
+            <AppLogo className="scale-125" />
             <div className="flex max-w-md flex-col gap-2">
               <h3 className="text-xl font-medium tracking-tight text-balance">
                 {notebook.title}
@@ -238,8 +235,6 @@ export function ChatPanel() {
             // a streaming answer as well as a new failure line.
             contentKey={`${messages.length}-${latestText.length}-${status}-${followUps.length}-${failure ? 1 : 0}`}
           >
-            {/* The horizontal padding is not decoration: the scroller clips at
-                its padding box, and the orb's glow reaches past its own box. */}
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6">
               <Marker variant="separator">
                 <MarkerContent>
@@ -268,12 +263,6 @@ export function ChatPanel() {
                     key={message.id}
                     from="assistant"
                     bubble={false}
-                    avatar={
-                      <SiriOrb
-                        size={AVATAR_SIZE}
-                        state={isLatest && busy ? 'streaming' : 'idle'}
-                      />
-                    }
                     copyText={content}
                     actions={[
                       {
@@ -333,11 +322,7 @@ export function ChatPanel() {
               })}
 
               {failure && (
-                <AIMessage
-                  from="assistant"
-                  bubble={false}
-                  avatar={<SiriOrb size={AVATAR_SIZE} state="error" />}
-                >
+                <AIMessage from="assistant" bubble={false}>
                   <p role="alert" className="text-sm text-destructive">
                     {failure}
                   </p>
@@ -345,11 +330,7 @@ export function ChatPanel() {
               )}
 
               {waiting && (
-                <AIMessage
-                  from="assistant"
-                  bubble={false}
-                  avatar={<SiriOrb size={AVATAR_SIZE} state="thinking" />}
-                >
+                <AIMessage from="assistant" bubble={false}>
                   <AILoader label="Quellen werden durchsucht" showElapsed />
                 </AIMessage>
               )}

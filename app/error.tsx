@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect } from 'react'
+import Image from 'next/image'
 import * as Sentry from '@sentry/nextjs'
-import { RotateCcw, TriangleAlert } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Empty,
@@ -11,6 +12,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty'
+import illustration from '@/public/error.png'
 
 /**
  * Anything that throws on the server without being caught lands here. The
@@ -32,8 +34,15 @@ export default function Error({
     <div className="flex min-h-svh items-center justify-center p-6">
       <Empty className="max-w-md border border-dashed">
         <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <TriangleAlert />
+          <EmptyMedia>
+            <Image
+              src={illustration}
+              alt=""
+              priority
+              quality={90}
+              sizes="6rem"
+              className="w-24"
+            />
           </EmptyMedia>
           <EmptyTitle>
             <h1 className="text-base font-medium">Da ist etwas schiefgelaufen</h1>

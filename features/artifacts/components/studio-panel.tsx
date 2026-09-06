@@ -1,20 +1,13 @@
 'use client'
 
-import { useState, type ComponentType } from 'react'
-import {
-  AudioLines,
-  FileText,
-  GitBranch,
-  HelpCircle,
-  Layers,
-  ListOrdered,
-  LoaderCircle,
-  Trash2,
-} from 'lucide-react'
+import { useState } from 'react'
+import type { StaticImageData } from 'next/image'
+import { LoaderCircle, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useNotebookStore } from '@/features/notebooks/components/notebook-store'
 import { MindmapView } from '@/features/artifacts/components/mindmap-view'
 import { NotesSection } from '@/features/sources/components/notes-section'
+import { IllustrationIcon } from '@/components/illustration-icon'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -41,56 +34,54 @@ import { cn } from '@/lib/utils'
 import { readMindmap } from '@/features/artifacts/mindmap'
 import type { ArtifactRow } from '@/features/artifacts/artifacts'
 import type { ArtifactKind } from '@/lib/db/schema'
+import audioIllustration from '@/public/audio-overview.png'
+import briefingIllustration from '@/public/briefing.png'
+import faqIllustration from '@/public/faq.png'
+import timelineIllustration from '@/public/timeline.png'
+import mindmapIllustration from '@/public/mindmap.png'
+import flashcardsIllustration from '@/public/flashcards.png'
 
-const generators: {
-  kind: ArtifactKind
-  label: string
-  hint: string
-  icon: ComponentType<{ className?: string }>
-}[] = [
+/** Soft 3D renders with their own glow, so they need no background. */
+const artifactIllustrations: Record<ArtifactKind, StaticImageData> = {
+  audio: audioIllustration,
+  briefing: briefingIllustration,
+  faq: faqIllustration,
+  timeline: timelineIllustration,
+  mindmap: mindmapIllustration,
+  flashcards: flashcardsIllustration,
+}
+
+const generators: { kind: ArtifactKind; label: string; hint: string }[] = [
   {
     kind: 'audio',
     label: 'Audio-Übersicht',
     hint: 'Ein Erzähler über die Quellen',
-    icon: AudioLines,
   },
   {
     kind: 'briefing',
     label: 'Briefing',
     hint: 'Strukturierte Zusammenfassung',
-    icon: FileText,
   },
-  { kind: 'faq', label: 'FAQ', hint: 'Fragen & Antworten', icon: HelpCircle },
+  { kind: 'faq', label: 'FAQ', hint: 'Fragen & Antworten' },
   {
     kind: 'timeline',
     label: 'Zeitleiste',
     hint: 'Chronologie der Ereignisse',
-    icon: ListOrdered,
   },
   {
     kind: 'mindmap',
     label: 'Mindmap',
     hint: 'Themen und Verzweigungen',
-    icon: GitBranch,
   },
   {
     kind: 'flashcards',
     label: 'Lernkarten',
     hint: 'Abfrage zum Einprägen',
-    icon: Layers,
   },
 ]
 
-const artifactIcons: Record<
-  ArtifactKind,
-  ComponentType<{ className?: string }>
-> = {
-  audio: AudioLines,
-  briefing: FileText,
-  faq: HelpCircle,
-  timeline: ListOrdered,
-  mindmap: GitBranch,
-  flashcards: Layers,
+function ArtifactIllustration({ kind }: { kind: ArtifactKind }) {
+  return <IllustrationIcon src={artifactIllustrations[kind]} />
 }
 
 export function StudioPanel() {
@@ -166,7 +157,7 @@ export function StudioPanel() {
             Erzeugen
           </h3>
           <div className="grid grid-cols-2 gap-2">
-            {generators.map(({ kind, label, hint, icon: Icon }) => {
+            {generators.map(({ kind, label, hint }) => {
               const busy = pending === kind
               return (
                 <button
@@ -181,16 +172,16 @@ export function StudioPanel() {
                     busy ? 'bg-indigo-200/70' : 'disabled:opacity-50',
                   )}
                 >
-                  <span className="rounded-md bg-primary p-2 text-primary-foreground">
-                    {busy ? (
+                  {busy ? (
+                    <span className="flex size-8 items-center justify-center">
                       <LoaderCircle
-                        className="size-4 animate-spin"
+                        className="size-4 animate-spin text-primary"
                         aria-hidden="true"
                       />
-                    ) : (
-                      <Icon className="size-4" aria-hidden="true" />
-                    )}
-                  </span>
+                    </span>
+                  ) : (
+                    <ArtifactIllustration kind={kind} />
+                  )}
                   <span className="text-[13px] leading-tight font-medium">
                     {busy ? 'Wird erstellt…' : label}
                   </span>
@@ -218,17 +209,17 @@ export function StudioPanel() {
           ) : (
             <div className="flex flex-col gap-2">
               {artifacts.map((artifact) => {
-                const Icon = artifactIcons[artifact.kind]
                 const meta = artifactMeta(artifact)
                 return (
                   <Item
                     key={artifact.id}
-                    variant="outline"
                     size="sm"
-                    className="relative cursor-pointer hover:bg-accent/50 focus-within:ring-[3px] focus-within:ring-ring/40"
+                    // Same surface as the generator tiles above, so the
+                    // results read as the output of those cards.
+                    className="relative cursor-pointer rounded-xl bg-indigo-100 hover:bg-indigo-200/70 focus-within:ring-[3px] focus-within:ring-ring/40"
                   >
-                    <ItemMedia variant="icon">
-                      <Icon />
+                    <ItemMedia>
+                      <ArtifactIllustration kind={artifact.kind} />
                     </ItemMedia>
                     <ItemContent>
                       <ItemTitle>
