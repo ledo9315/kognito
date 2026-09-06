@@ -18,6 +18,9 @@ import { AppLogo } from '@/components/app-logo'
 import { SmoothScroll } from '@/components/smooth-scroll'
 import { buttonVariants } from '@/components/ui/button'
 import dashboard from '@/public/dashboard.webp'
+import notebookIllustration from '@/public/empty.png'
+import uploadIllustration from '@/public/upload.png'
+import bubbleIllustration from '@/public/bubble.png'
 
 const features: {
   title: string
@@ -62,21 +65,26 @@ const features: {
   },
 ]
 
+// The same pictures greet the reader again inside the app: the notebook in
+// the empty notebook grid, the upload in the empty sources panel.
 const steps = [
   {
     title: 'Notizbuch anlegen',
     description:
       'Ein Notizbuch pro Thema, Seminararbeit oder Projekt. Mit Titel und Symbol, damit die Übersicht lesbar bleibt.',
+    illustration: notebookIllustration,
   },
   {
     title: 'Quellen hinzufügen',
     description:
       'Dateien hochladen oder Text einfügen. Ausgewählte Quellen bestimmen, worauf sich die nächste Antwort stützt.',
+    illustration: uploadIllustration,
   },
   {
     title: 'Fragen stellen',
     description:
       'Frag im Chat, lies die Antwort mit Belegen und lass daraus Briefing, Mindmap oder Audio erzeugen.',
+    illustration: bubbleIllustration,
   },
 ]
 
@@ -302,10 +310,18 @@ export function Landing() {
                 key={step.title}
                 className="rounded-xl border border-border bg-gray-50 p-6"
               >
-                <span className="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-                  {index + 1}
-                </span>
-                <h3 className="mt-4 text-base font-medium">{step.title}</h3>
+                <Image
+                  src={step.illustration}
+                  alt=""
+                  sizes="10rem"
+                  className="mx-auto w-40 [mask-image:radial-gradient(circle_at_center,black_55%,transparent_72%)]"
+                />
+                <div className="mt-2 flex items-center gap-3">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+                    {index + 1}
+                  </span>
+                  <h3 className="text-base font-medium">{step.title}</h3>
+                </div>
                 <p className="mt-2 text-sm/6 text-muted-foreground">
                   {step.description}
                 </p>

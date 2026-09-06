@@ -1,8 +1,9 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
-import { LayoutGrid, List, NotebookPen, Plus, Search } from 'lucide-react'
+import { LayoutGrid, List, Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -23,6 +24,8 @@ import { NotebookEmoji } from '@/features/notebooks/components/notebook-emoji'
 import { NotebookMenu } from '@/features/notebooks/components/notebook-menu'
 import type { NotebookSummary } from '@/features/notebooks/notebooks'
 import { sourceLabel } from '@/features/sources/source-label'
+import emptyIllustration from '@/public/empty.png'
+import searchIllustration from '@/public/search.png'
 
 type NotebookCard = NotebookSummary & { updatedLabel: string }
 
@@ -38,10 +41,22 @@ export function NotebookGrid({ notebooks }: { notebooks: NotebookCard[] }) {
     return (
       <Empty className="border border-dashed">
         <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <NotebookPen />
+          <EmptyMedia>
+            {/*
+              The picture brings its own pale blue ground. A radial mask fades
+              the square's edges out, so it floats on the page background
+              instead of sitting in a visible box.
+            */}
+            <Image
+              src={emptyIllustration}
+              alt=""
+              priority
+              quality={90}
+              sizes="14rem"
+              className="w-56 [mask-image:radial-gradient(circle_at_center,black_55%,transparent_72%)]"
+            />
           </EmptyMedia>
-          <EmptyTitle>Noch kein Notizbuch</EmptyTitle>
+          <EmptyTitle className="text-base">Noch kein Notizbuch</EmptyTitle>
           <EmptyDescription>
             Lege ein Notizbuch an, sammle darin deine Quellen und stelle Fragen
             dazu.
@@ -105,8 +120,14 @@ export function NotebookGrid({ notebooks }: { notebooks: NotebookCard[] }) {
       {filteredNotebooks.length === 0 ? (
         <Empty className="border border-dashed">
           <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Search />
+            <EmptyMedia>
+              <Image
+                src={searchIllustration}
+                alt=""
+                quality={90}
+                sizes="10rem"
+                className="w-40 [mask-image:radial-gradient(circle_at_center,black_55%,transparent_72%)]"
+              />
             </EmptyMedia>
             <EmptyTitle>Keine Treffer</EmptyTitle>
             <EmptyDescription>
