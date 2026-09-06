@@ -2,6 +2,11 @@ import { withSentryConfig } from '@sentry/nextjs'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  images: {
+    // 75 is Next's only default. The auth illustration is a soft 3D render
+    // whose gradients band at that level, so it asks for 90.
+    qualities: [75, 90],
+  },
   experimental: {
     // Uploads go through a server action, and those are capped at 1 MB by
     // default. The action itself refuses anything above 10 MB.
