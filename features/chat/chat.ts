@@ -1,4 +1,4 @@
-import { streamText, type LanguageModel, type ModelMessage } from 'ai'
+import { smoothStream, streamText, type LanguageModel, type ModelMessage } from 'ai'
 import { citationsIn, toCitations } from '@/features/chat/citations'
 import { buildPrompt, getContextChunks, NoContextError } from '@/features/chat/context'
 import { createEmbedder, type Embedder } from '@/lib/embeddings'
@@ -84,6 +84,10 @@ export async function streamAnswer(
     model,
     system: prompt.system,
     messages,
+    // The model hands over several words per chunk, which the reader sees as
+    // text arriving in lumps. Re-cut into words at a steady pace, the answer
+    // reads as being written.
+    experimental_transform: smoothStream({ chunking: 'word', delayInMs: 12 }),
     onError: ({ error }) => {
       console.error('chat: the model failed', error)
     },
