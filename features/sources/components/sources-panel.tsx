@@ -1,6 +1,7 @@
 'use client'
 
-import { MoreHorizontal, Plus, Trash2, FileSearch, TriangleAlert } from 'lucide-react'
+import Image from 'next/image'
+import { MoreHorizontal, Plus, Trash2, TriangleAlert } from 'lucide-react'
 import { useNotebookStore } from '@/features/notebooks/components/notebook-store'
 import { SourceIcon, sourceKindLabel } from '@/features/sources/components/source-icon'
 import { AddSourceDialog } from '@/features/sources/components/add-source-dialog'
@@ -23,6 +24,7 @@ import {
 } from '@/components/ui/empty'
 import { deleteSourceAction } from '@/features/sources/source-actions'
 import { cn } from '@/lib/utils'
+import uploadIllustration from '@/public/upload-transparent.png'
 
 export function SourcesPanel() {
   const { notebook, sources, openSourceId, openSource, selectSource, selectAllSources } =
@@ -48,10 +50,21 @@ export function SourcesPanel() {
 
       {sources.length === 0 ? (
         <div className="group relative flex flex-1 items-center p-4">
-          <Empty className="border border-dashed transition-colors group-hover:border-primary/40 group-hover:bg-accent/40">
+          <Empty className="border border-dashed border-primary/40 transition-colors group-hover:border-primary/40 group-hover:bg-accent/40">
             <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <FileSearch />
+              <EmptyMedia>
+                {/*
+                  A cut-out with transparent background, unlike the other
+                  illustrations: at this size a masked square would leave no
+                  room for the picture itself.
+                */}
+                <Image
+                  src={uploadIllustration}
+                  alt=""
+                  quality={90}
+                  sizes="4rem"
+                  className="w-15"
+                />
               </EmptyMedia>
               <EmptyTitle>Noch keine Quellen</EmptyTitle>
               <EmptyDescription>
