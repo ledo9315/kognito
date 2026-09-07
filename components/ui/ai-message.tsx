@@ -18,7 +18,7 @@ export type AIMessageAction = {
 }
 
 export type AIMessageProps = {
-  /** Rendered to the side of the bubble, an avatar or an orb. */
+  /** Rendered to the side of the bubble. */
   avatar?: ReactNode
   /**
    * Draw the tinted bubble. Off for assistant turns, whose answer text and

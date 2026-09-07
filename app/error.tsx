@@ -1,21 +1,17 @@
 'use client'
 
 import { useEffect } from 'react'
+import Image from 'next/image'
 import * as Sentry from '@sentry/nextjs'
-import { RotateCcw, TriangleAlert } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty'
+import illustration from '@/public/error.png'
 
 /**
  * Anything that throws on the server without being caught lands here. The
  * message itself is not shown: it is written for a log, not for a reader,
- * and it can carry details that do not belong on a screen.
+ * and it can carry details that do not belong on a screen. Same layout as
+ * the 404 page in `app/not-found.tsx`.
  */
 export default function Error({
   error,
@@ -29,25 +25,30 @@ export default function Error({
   }, [error])
 
   return (
-    <div className="flex min-h-svh items-center justify-center p-6">
-      <Empty className="max-w-md border border-dashed">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <TriangleAlert />
-          </EmptyMedia>
-          <EmptyTitle>
-            <h1 className="text-base font-medium">Da ist etwas schiefgelaufen</h1>
-          </EmptyTitle>
-          <EmptyDescription>
-            Die Seite konnte nicht geladen werden. Deine Notizbücher und Quellen
-            sind davon nicht betroffen.
-          </EmptyDescription>
-        </EmptyHeader>
-        <Button className="mx-auto" onClick={reset}>
-          <RotateCcw data-icon="inline-start" />
-          Erneut versuchen
-        </Button>
-      </Empty>
-    </div>
+    <main className="flex min-h-svh flex-col items-center justify-center px-6 py-12 text-center">
+      {/* The picture brings its own pale blue ground; the radial mask fades
+          the square's edges into the page. */}
+      <Image
+        src={illustration}
+        alt=""
+        priority
+        quality={90}
+        sizes="(min-width: 640px) 26rem, 80vw"
+        className="w-full max-w-[26rem] [mask-image:radial-gradient(circle_at_center,black_55%,transparent_72%)]"
+      />
+
+      <h1 className="text-2xl font-medium tracking-tight text-[#1c3557]">
+        Da ist etwas schiefgelaufen
+      </h1>
+      <p className="mt-2 max-w-sm text-sm leading-relaxed text-[#1c3557]/70">
+        Die Seite konnte nicht geladen werden. Deine Notizbücher und Quellen
+        sind davon nicht betroffen.
+      </p>
+
+      <Button className="mt-6" onClick={reset}>
+        <RotateCcw data-icon="inline-start" />
+        Erneut versuchen
+      </Button>
+    </main>
   )
 }

@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
-import logo from '@/public/kognito-logo.png'
+import logo from '@/public/logo.png'
 
 export function AppLogo({ className }: { className?: string }) {
   return (
@@ -8,10 +8,10 @@ export function AppLogo({ className }: { className?: string }) {
       <Image
         src={logo}
         alt=""
-        width={24}
-        height={24}
+        width={128}
+        height={128}
         priority
-        className="size-6"
+        className="size-8"
       />
       <span className="text-[15px] font-medium tracking-tight">Kognito</span>
     </span>

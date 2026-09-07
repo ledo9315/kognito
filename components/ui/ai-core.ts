@@ -1,13 +1,10 @@
 'use client'
 
-import { type MotionValue, useMotionValue } from 'motion/react'
-import { useEffect } from 'react'
-
 /**
- * The state contract shared by the orb, the prompt input and the loader, so
- * the whole chat surface moves as one thing rather than as separate widgets.
- * Adapted from SmoothUI's ai-core, without the microphone hooks: the chat
- * never listens, and the orb's amplitude input stays for the audio overview.
+ * The state contract shared by the prompt input and the loader, so the whole
+ * chat surface moves as one thing rather than as separate widgets. Adapted
+ * from SmoothUI's ai-core, without the microphone hooks: the chat never
+ * listens.
  */
 export type AIState =
   | 'idle'
@@ -161,26 +158,4 @@ export function getAIStateAccentColor(
 
 export function getAIStateMotion(state: AIState | undefined): AIStateMotion {
   return AI_STATE_MOTION[state ?? 'idle'] ?? AI_STATE_MOTION.idle
-}
-
-/**
- * Amplitude accepted by the orb. A MotionValue is the preferred form: it
- * updates outside React, so a 60 fps signal never triggers a re-render.
- */
-export type AIAmplitude = number | MotionValue<number> | undefined
-
-function isMotionValue(value: AIAmplitude): value is MotionValue<number> {
-  return typeof value === 'object' && value !== null && 'get' in value
-}
-
-/** Normalises the amplitude prop into one stable MotionValue. */
-export function useAmplitudeValue(amplitude: AIAmplitude): MotionValue<number> {
-  const fallback = useMotionValue(0)
-  const numeric = typeof amplitude === 'number' ? amplitude : null
-
-  useEffect(() => {
-    if (numeric !== null) fallback.set(numeric)
-  }, [numeric, fallback])
-
-  return isMotionValue(amplitude) ? amplitude : fallback
 }

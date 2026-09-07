@@ -62,7 +62,7 @@ export function AuthForm({
           alt=""
           sizes="(min-width: 1024px) 50vw, 1px"
           quality={90}
-          className="absolute inset-0 h-full w-full object-fit object-[center_42%]"
+          className="absolute inset-0 h-full w-full object-cover object-[center_42%]"
         />
 
         <div className="relative max-w-sm">

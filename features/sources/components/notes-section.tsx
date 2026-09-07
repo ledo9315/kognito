@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useTransition, type FormEvent } from 'react'
-import { NotebookPen, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useNotebookStore } from '@/features/notebooks/components/notebook-store'
+import { IllustrationIcon } from '@/components/illustration-icon'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -28,6 +29,7 @@ import {
   updateNoteAction,
 } from '@/features/sources/note-actions'
 import { cn } from '@/lib/utils'
+import notesIllustration from '@/public/notes.png'
 
 /** Null id means a new note, an id means the existing one is being edited. */
 type Draft = { id: string | null; title: string; body: string }
@@ -96,15 +98,17 @@ export function NotesSection() {
           {notes.map((note) => (
             <Item
               key={note.id}
-              variant="outline"
               size="sm"
+              // Same surface as the studio tiles and the results above.
               className={cn(
-                'relative cursor-pointer focus-within:ring-[3px] focus-within:ring-ring/40',
-                openSourceId === note.id ? 'bg-accent' : 'hover:bg-accent/50',
+                'relative cursor-pointer rounded-xl bg-indigo-100 focus-within:ring-[3px] focus-within:ring-ring/40',
+                openSourceId === note.id
+                  ? 'bg-indigo-200'
+                  : 'hover:bg-indigo-200/70',
               )}
             >
-              <ItemMedia variant="icon">
-                <NotebookPen />
+              <ItemMedia>
+                <IllustrationIcon src={notesIllustration} />
               </ItemMedia>
               <ItemContent>
                 <ItemTitle>
@@ -188,6 +192,7 @@ export function NotesSection() {
               aria-label="Text der Notiz"
               placeholder="Text"
               rows={8}
+              className="max-h-[60svh] min-h-48 overflow-y-auto"
             />
 
             <DialogFooter>

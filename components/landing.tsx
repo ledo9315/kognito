@@ -1,67 +1,73 @@
-import Image from 'next/image'
+import Image, { type StaticImageData } from 'next/image'
 import Link from 'next/link'
 import type { ComponentType } from 'react'
 import {
   ArrowUpRight,
-  AudioLines,
   ChevronDown,
   CircleHelp,
-  FileText,
-  GitBranch,
-  MessageSquareQuote,
-  NotebookPen,
   Route,
   Sparkles,
-  Upload,
 } from 'lucide-react'
 import { AppLogo } from '@/components/app-logo'
+import { IllustrationIcon } from '@/components/illustration-icon'
+import { Safari } from '@/components/ui/safari'
 import { SmoothScroll } from '@/components/smooth-scroll'
 import { buttonVariants } from '@/components/ui/button'
 import dashboard from '@/public/dashboard.webp'
 import notebookIllustration from '@/public/empty.png'
 import uploadIllustration from '@/public/upload.png'
 import bubbleIllustration from '@/public/bubble.png'
+import sourcesIcon from '@/public/sources.png'
+import citationsIcon from '@/public/citations.png'
+import audioIcon from '@/public/audio-overview.png'
+import briefingIcon from '@/public/briefing.png'
+import mindmapIcon from '@/public/mindmap.png'
+import notesIcon from '@/public/notes.png'
 
+/**
+ * The same renders the studio uses for its tiles, so the page shows the
+ * shapes the reader meets again in the app.
+ */
 const features: {
   title: string
   description: string
-  icon: ComponentType<{ className?: string }>
+  illustration: StaticImageData
 }[] = [
   {
     title: 'Quellen an einem Ort',
     description:
       'PDFs, Textdateien und eingefügte Ausschnitte landen in einem Notizbuch. Kognito liest alles und behält, wo etwas steht.',
-    icon: Upload,
+    illustration: sourcesIcon,
   },
   {
     title: 'Antworten mit Belegstelle',
     description:
       'Jede Aussage trägt eine Nummer. Ein Klick darauf springt in die Quelle und markiert den Satz, auf dem sie beruht.',
-    icon: MessageSquareQuote,
+    illustration: citationsIcon,
   },
   {
     title: 'Audio-Übersicht',
     description:
       'Ein Erzähler fasst die ausgewählten Quellen zusammen. Zum Hören, während du etwas anderes machst.',
-    icon: AudioLines,
+    illustration: audioIcon,
   },
   {
     title: 'Briefing, FAQ und Zeitleiste',
     description:
       'Aus denselben Quellen entsteht eine strukturierte Zusammenfassung, ein Frage-Antwort-Satz oder eine Chronologie.',
-    icon: FileText,
+    illustration: briefingIcon,
   },
   {
     title: 'Mindmap und Lernkarten',
     description:
       'Themen und ihre Verzweigungen als Karte, und eine Abfrage für alles, was hängen bleiben soll.',
-    icon: GitBranch,
+    illustration: mindmapIcon,
   },
   {
     title: 'Notizen als Quelle',
     description:
       'Was du selbst schreibst, zählt wie eine hochgeladene Datei: durchsuchbar, zitierbar, Teil der nächsten Antwort.',
-    icon: NotebookPen,
+    illustration: notesIcon,
   },
 ]
 
@@ -238,12 +244,16 @@ export function Landing() {
             </Link>
           </div>
 
-          <Image
-            src={dashboard}
-            alt="Ein Notizbuch in Kognito: links die Quellen, in der Mitte der Chat, rechts die erzeugten Formate"
+          {/* The screenshot is wider than the window's screen; the gap above
+              and below is filled with the app's own window band colour. */}
+          <Safari
+            url="kognito-app.vercel.app/notebook/thesis"
+            imageSrc={dashboard.src}
+            screenBackground="#edf0fd"
             priority
-            sizes="(min-width: 1280px) 1152px, 100vw"
-            className="mt-14 w-full max-w-6xl rounded-2xl shadow-[0_40px_80px_-30px_rgb(15_23_42/0.35)]"
+            imageSizes="(min-width: 1280px) 1152px, 100vw"
+            imageQuality={90}
+            className="mt-14 w-full max-w-6xl drop-shadow-[0_40px_80px_rgb(15_23_42/0.25)]"
           />
         </div>
       </section>
@@ -281,11 +291,10 @@ export function Landing() {
                 // over it and they end up stacked, like the reference site.
                 className="flex flex-col items-start rounded-xl bg-indigo-100 p-6 md:sticky md:top-24"
               >
-                <span
-                  className="rounded-md bg-primary p-2 text-primary-foreground"
-                >
-                  <feature.icon className="size-6" aria-hidden="true" />
-                </span>
+                <IllustrationIcon
+                  src={feature.illustration}
+                  className="size-10"
+                />
                 <h3 className="mt-4 text-base font-medium">{feature.title}</h3>
                 <p className="mt-2 text-sm/6 text-gray-600">
                   {feature.description}

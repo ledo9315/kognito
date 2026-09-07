@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, type ReactElement } from 'react'
-import { UploadCloud } from 'lucide-react'
+import Image from 'next/image'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { addSourceAction, type SourceFormState } from '@/features/sources/source-actions'
 import { cn } from '@/lib/utils'
+import uploadIllustration from '@/public/upload-transparent.png'
 
 export function AddSourceDialog({
   notebookId,
@@ -123,11 +124,20 @@ export function AddSourceDialog({
                     className={cn(
                       // Children do not take the pointer, otherwise dragging
                       // across them reads as leaving the zone.
-                      'flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-dashed border-input px-4 py-6 text-center transition-colors hover:border-primary/40 hover:bg-accent/40 peer-focus-visible:border-ring peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 [&_*]:pointer-events-none',
+                      'flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-dashed border-primary/40 bg-accent/40 px-4 py-6 text-center transition-colors hover:border-primary/80 hover:bg-accent peer-focus-visible:border-ring peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 [&_*]:pointer-events-none',
                       overDropZone && 'border-primary bg-accent',
                     )}
                   >
-                    <UploadCloud className="size-5 text-muted-foreground" aria-hidden="true" />
+                    {/* The same cut-out the empty sources list shows, so the
+                        dialog picks up where that hint left off. */}
+                    <Image
+                      src={uploadIllustration}
+                      alt=""
+                      draggable={false}
+                      quality={90}
+                      sizes="4rem"
+                      className="w-15"
+                    />
                     <span className="text-sm">
                       {fileName ?? 'Datei hierher ziehen oder auswählen'}
                     </span>

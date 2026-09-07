@@ -50,7 +50,9 @@ export function SourcesPanel() {
 
       {sources.length === 0 ? (
         <div className="group relative flex flex-1 items-center p-4">
-          <Empty className="border border-dashed border-primary/40 transition-colors group-hover:border-primary/40 group-hover:bg-accent/40">
+          {/* The invisible button below covers the card as a sibling, so the
+              hover has to come down from the wrapper. */}
+          <Empty className="border border-dashed border-primary/40 bg-accent/40 transition-colors group-hover:border-primary/80 group-hover:bg-accent">
             <EmptyHeader>
               <EmptyMedia>
                 {/*

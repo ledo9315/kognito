@@ -11,11 +11,11 @@ import illustration from '@/public/404.png'
  */
 export default function NotFound() {
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center bg-[linear-gradient(180deg,#f3f8fe_0%,#e6f2fe_100%)] px-6 py-12 text-center">
+    <main className="flex min-h-svh flex-col items-center justify-center px-6 py-12 text-center">
       {/*
         The picture already spells out 404 and carries its own light blue
-        background. The page repeats that tone and a radial mask fades the
-        square's edges into it.
+        background. A radial mask fades the square's edges into the page,
+        like the other empty states.
       */}
       <Image
         src={illustration}
