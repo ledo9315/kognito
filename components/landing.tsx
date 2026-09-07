@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { AppLogo } from '@/components/app-logo'
 import { IllustrationIcon } from '@/components/illustration-icon'
+import { Safari } from '@/components/ui/safari'
 import { SmoothScroll } from '@/components/smooth-scroll'
 import { buttonVariants } from '@/components/ui/button'
 import dashboard from '@/public/dashboard.webp'
@@ -243,12 +244,16 @@ export function Landing() {
             </Link>
           </div>
 
-          <Image
-            src={dashboard}
-            alt="Ein Notizbuch in Kognito: links die Quellen, in der Mitte der Chat, rechts die erzeugten Formate"
+          {/* The screenshot is wider than the window's screen; the gap above
+              and below is filled with the app's own window band colour. */}
+          <Safari
+            url="kognito-app.vercel.app/notebook/thesis"
+            imageSrc={dashboard.src}
+            screenBackground="#edf0fd"
             priority
-            sizes="(min-width: 1280px) 1152px, 100vw"
-            className="mt-14 w-full max-w-6xl rounded-2xl shadow-[0_40px_80px_-30px_rgb(15_23_42/0.35)]"
+            imageSizes="(min-width: 1280px) 1152px, 100vw"
+            imageQuality={90}
+            className="mt-14 w-full max-w-6xl drop-shadow-[0_40px_80px_rgb(15_23_42/0.25)]"
           />
         </div>
       </section>

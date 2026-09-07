@@ -39,7 +39,7 @@ export function NotebookGrid({ notebooks }: { notebooks: NotebookCard[] }) {
 
   if (notebooks.length === 0) {
     return (
-      <Empty className="border border-dashed border-primary/40">
+      <Empty>
         <EmptyHeader>
           <EmptyMedia>
             {/*
