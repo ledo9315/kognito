@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
   test: {
-    include: ['features/**/*.test.ts', 'lib/**/*.test.ts', 'app/**/*.test.ts'],
+    include: ['tests/**/*.test.ts'],
   },
   resolve: {
     alias: {
