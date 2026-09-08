@@ -24,9 +24,17 @@ function safeNext(value: FormDataEntryValue | null) {
   return next.startsWith('/') && !next.startsWith('//') ? next : '/'
 }
 
+/** Better Auth's own messages are English, so the known codes get German text. */
+const otpMessages: Record<string, string> = {
+  INVALID_OTP: 'Der Code stimmt nicht. Bitte prüfe die Ziffern.',
+  OTP_EXPIRED: 'Der Code ist abgelaufen. Fordere einen neuen an.',
+  TOO_MANY_ATTEMPTS: 'Zu viele Versuche. Fordere einen neuen Code an.',
+}
+
 function messageFor(error: unknown) {
   if (error instanceof APIError) {
-    return error.message || 'Anmeldung fehlgeschlagen.'
+    const code = (error.body as { code?: string } | undefined)?.code
+    return (code && otpMessages[code]) || 'Anmeldung fehlgeschlagen.'
   }
   return 'Das hat nicht funktioniert. Bitte versuche es erneut.'
 }
