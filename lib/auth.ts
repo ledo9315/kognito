@@ -3,6 +3,8 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { nextCookies } from 'better-auth/next-js'
 import { getDb } from '@/lib/db'
 import * as schema from '@/lib/db/schema'
+import { emailOTP } from 'better-auth/plugins'
+import { sendOtpEmail } from '@/lib/email'
 
 function create() {
   const googleClientId = process.env.GOOGLE_CLIENT_ID
@@ -48,7 +50,20 @@ function create() {
       },
     },
 
-    plugins: [nextCookies()],
+    plugins: [
+      emailOTP({
+        storeOTP: 'hashed',
+        async sendVerificationOTP({ email, otp, type }) {
+          if (type === 'sign-in') {
+            await sendOtpEmail({ email, otp, type: 'sign-in' })
+            return
+          }
+
+          throw new Error(`OTP-Typ \"${type}\" wird noch nicht unterstützt.`)
+        },
+      }),
+      nextCookies(),
+    ],
   })
 }
 

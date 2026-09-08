@@ -8,15 +8,15 @@ import { getAuth } from '@/lib/auth'
 
 export type AuthFormState = { error: string } | null
 
-const Credentials = z.object({
-  email: z.email('Bitte gib eine gültige E-Mail-Adresse ein.'),
-  password: z
-    .string()
-    .min(8, 'Das Passwort muss mindestens 8 Zeichen lang sein.'),
-})
+const Credentials = z.object({ email: z.email('Bitte gib eine gültige E-Mail-Adresse ein.') })
 
 const Registration = Credentials.extend({
   name: z.string().trim().min(1, 'Bitte gib einen Namen ein.'),
+})
+
+const OtpConfirmation = Credentials.extend({
+  name: z.string().trim().min(1).optional(),
+  otp: z.string().trim().regex(/^\d{6}$/, 'Bitte gib den sechsstelligen Code ein.'),
 })
 
 function safeNext(value: FormDataEntryValue | null) {
@@ -28,17 +28,23 @@ function messageFor(error: unknown) {
   if (error instanceof APIError) {
     return error.message || 'Anmeldung fehlgeschlagen.'
   }
-  throw error
+  return 'Das hat nicht funktioniert. Bitte versuche es erneut.'
+}
+
+function verificationUrl({ email, name, next }: { email: string; name?: string; next: string }) {
+  const params = new URLSearchParams({ email, next })
+  if (name) params.set('name', name)
+  return `/sign-in/verify?${params}`
 }
 
 export async function signUpAction(
   _state: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
+  
   const parsed = Registration.safeParse({
     name: formData.get('name'),
     email: formData.get('email'),
-    password: formData.get('password'),
   })
 
   if (!parsed.success) {
@@ -46,28 +52,68 @@ export async function signUpAction(
   }
   
   try {
-    await getAuth().api.signUpEmail({ body: parsed.data, headers: await headers() })
+    await getAuth().api.sendVerificationOTP({
+      body: { email: parsed.data.email, type: 'sign-in' },
+    })
   } catch (error) {
     return { error: messageFor(error) }
   }
 
-  redirect(safeNext(formData.get('next')))
+  redirect(
+    verificationUrl({
+      email: parsed.data.email,
+      name: parsed.data.name,
+      next: safeNext(formData.get('next')),
+    }),
+  )
 }
 
 export async function signInAction(
   _state: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
-  const parsed = Credentials.safeParse({
-    email: formData.get('email'),
-    password: formData.get('password'),
-  })
+
+  const parsed = Credentials.safeParse({ email: formData.get('email') })
+
   if (!parsed.success) {
     return { error: parsed.error.issues[0].message }
   }
 
   try {
-    await getAuth().api.signInEmail({ body: parsed.data, headers: await headers() })
+    await getAuth().api.sendVerificationOTP({
+      body: { email: parsed.data.email, type: 'sign-in' },
+    })
+  } catch (error) {
+    return { error: messageFor(error) }
+  }
+
+  redirect(
+    verificationUrl({
+      email: parsed.data.email,
+      next: safeNext(formData.get('next')),
+    }),
+  )
+}
+
+export async function verifyOtpAction(
+  _state: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const parsed = OtpConfirmation.safeParse({
+    email: formData.get('email'),
+    name: formData.get('name') || undefined,
+    otp: formData.get('otp'),
+  })
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message }
+  }
+
+  try {
+    await getAuth().api.signInEmailOTP({
+      body: parsed.data,
+      headers: await headers(),
+    })
   } catch (error) {
     return { error: messageFor(error) }
   }

@@ -12,6 +12,7 @@ import {
   signInAction,
   signInWithGoogleAction,
   signUpAction,
+  verifyOtpAction,
   type AuthFormState,
 } from '@/app/(auth)/actions'
 import illustration from '@/public/auth-illustration.png'
@@ -33,21 +34,38 @@ const authFormText = {
     switchLabel: 'Anmelden',
     switchHref: '/sign-in',
   },
+  verify: {
+    title: 'Code eingeben',
+    description: 'Wir haben dir einen sechsstelligen Code per E-Mail gesendet.',
+    submit: 'Code bestätigen',
+    switchText: 'Keine E-Mail erhalten?',
+    switchLabel: 'Zurück zur Anmeldung',
+    switchHref: '/sign-in',
+  },
 } as const
 
 export function AuthForm({
   mode,
   next,
   googleEnabled,
+  email,
+  name,
 }: {
   mode: keyof typeof authFormText
   next: string
   googleEnabled: boolean
+  email?: string
+  name?: string
 }) {
+  
   const text = authFormText[mode]
 
   const [state, action, pending] = useActionState<AuthFormState, FormData>(
-    mode === 'sign-in' ? signInAction : signUpAction,
+    mode === 'sign-in'
+      ? signInAction
+      : mode === 'sign-up'
+        ? signUpAction
+        : verifyOtpAction,
     null,
   )
 
@@ -87,6 +105,12 @@ export function AuthForm({
 
           <form action={action} className="flex flex-col gap-4">
             <input type="hidden" name="next" value={next} />
+            {mode === 'verify' ? (
+              <>
+                <input type="hidden" name="email" value={email} />
+                <input type="hidden" name="name" value={name} />
+              </>
+            ) : null}
 
             <FieldGroup>
               {mode === 'sign-up' ? (
@@ -96,28 +120,32 @@ export function AuthForm({
                 </Field>
               ) : null}
 
-              <Field>
-                <FieldLabel htmlFor="email">E-Mail</FieldLabel>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                />
-              </Field>
-
-              <Field>
-                <FieldLabel htmlFor="password">Passwort</FieldLabel>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete={
-                    mode === 'sign-up' ? 'new-password' : 'current-password'
-                  }
-                  minLength={8}
-                />
-              </Field>
+              {mode === 'verify' ? (
+                <Field>
+                  <FieldLabel htmlFor="otp">Bestätigungscode für {email}</FieldLabel>
+                  <Input
+                    id="otp"
+                    name="otp"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    required
+                    autoFocus
+                  />
+                </Field>
+              ) : (
+                <Field>
+                  <FieldLabel htmlFor="email">E-Mail</FieldLabel>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                  />
+                </Field>
+              )}
             </FieldGroup>
 
             {state?.error ? (
@@ -131,7 +159,7 @@ export function AuthForm({
             </Button>
           </form>
 
-          {googleEnabled ? (
+          {googleEnabled && mode !== 'verify' ? (
             <>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="h-px flex-1 bg-border" />
