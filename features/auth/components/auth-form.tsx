@@ -4,7 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useActionState } from 'react'
 import { AppLogo } from '@/components/app-logo'
-import { GoogleLogo } from '@/app/(auth)/google-logo'
+import { GoogleLogo } from '@/features/auth/components/google-logo'
 import { Button } from '@/components/ui/button'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -13,7 +13,7 @@ import {
   signInWithGoogleAction,
   signUpAction,
   type AuthFormState,
-} from '@/app/(auth)/actions'
+} from '@/features/auth/auth-actions'
 import illustration from '@/public/auth-illustration.png'
 
 const authFormText = {
