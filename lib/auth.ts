@@ -5,6 +5,7 @@ import { getDb } from '@/lib/db'
 import * as schema from '@/lib/db/schema'
 import { emailOTP } from 'better-auth/plugins'
 import { sendOtpEmail } from '@/lib/email'
+import { fixedOtpForTests } from '@/lib/test-otp'
 
 function create() {
   const googleClientId = process.env.GOOGLE_CLIENT_ID
@@ -53,13 +54,16 @@ function create() {
     plugins: [
       emailOTP({
         storeOTP: 'hashed',
+        // Undefined outside the end-to-end tests, which makes the plugin draw
+        // a random code as usual.
+        generateOTP: () => fixedOtpForTests(),
         async sendVerificationOTP({ email, otp, type }) {
-          if (type === 'sign-in') {
-            await sendOtpEmail({ email, otp, type: 'sign-in' })
-            return
+          if (type !== 'sign-in') {
+            throw new Error(`OTP type "${type}" is not supported yet`)
           }
-
-          throw new Error(`OTP-Typ \"${type}\" wird noch nicht unterstützt.`)
+          // The tests know the code already, there is nothing to deliver.
+          if (fixedOtpForTests()) return
+          await sendOtpEmail({ email, otp, type: 'sign-in' })
         },
       }),
       nextCookies(),
