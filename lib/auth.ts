@@ -3,6 +3,9 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { nextCookies } from 'better-auth/next-js'
 import { getDb } from '@/lib/db'
 import * as schema from '@/lib/db/schema'
+import { emailOTP } from 'better-auth/plugins'
+import { sendOtpEmail } from '@/lib/email'
+import { fixedOtpForTests } from '@/lib/test-otp'
 
 function create() {
   const googleClientId = process.env.GOOGLE_CLIENT_ID
@@ -48,7 +51,23 @@ function create() {
       },
     },
 
-    plugins: [nextCookies()],
+    plugins: [
+      emailOTP({
+        storeOTP: 'hashed',
+        // Undefined outside the end-to-end tests, which makes the plugin draw
+        // a random code as usual.
+        generateOTP: () => fixedOtpForTests(),
+        async sendVerificationOTP({ email, otp, type }) {
+          if (type !== 'sign-in') {
+            throw new Error(`OTP type "${type}" is not supported yet`)
+          }
+          // The tests know the code already, there is nothing to deliver.
+          if (fixedOtpForTests()) return
+          await sendOtpEmail({ email, otp, type: 'sign-in' })
+        },
+      }),
+      nextCookies(),
+    ],
   })
 }
 

@@ -1,4 +1,5 @@
-import { expect, test as setup } from '@playwright/test'
+import { test as setup } from '@playwright/test'
+import { signUp } from './helpers'
 
 export const storageStatePath = '.playwright/user.json'
 
@@ -11,14 +12,6 @@ export const storageStatePath = '.playwright/user.json'
  * database rather than the one behind the deployment.
  */
 setup('sign up and keep the session', async ({ page }) => {
-  const email = `e2e-${Date.now()}-${process.env.TEST_WORKER_INDEX ?? 0}@kognito.test`
-
-  await page.goto('/sign-up')
-  await page.getByLabel('Name').fill('E2E Nutzer')
-  await page.getByLabel('E-Mail').fill(email)
-  await page.getByLabel('Passwort').fill('sehr-geheim-1234')
-  await page.getByRole('button', { name: 'Konto erstellen' }).click()
-
-  await expect(page.getByRole('button', { name: 'Kontomenü' })).toBeVisible()
+  await signUp(page, 'E2E Nutzer')
   await page.context().storageState({ path: storageStatePath })
 })

@@ -2,6 +2,11 @@ import { defineConfig, devices } from '@playwright/test'
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000'
 
+// The sign-in code the specs type. The server started below inherits the
+// variable and hands this code out instead of sending an email. A dev server
+// that is already running has to be started with the same variable.
+process.env.E2E_OTP_CODE ??= '424242'
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,

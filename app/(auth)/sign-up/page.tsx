@@ -12,7 +12,9 @@ export default async function SignUpPage({
 }: {
   searchParams: Promise<{ next?: string }>
 }) {
+
   if (await getSession()) redirect('/')
+    
   const { next } = await searchParams
 
   return (
