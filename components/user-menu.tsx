@@ -1,5 +1,5 @@
 import { LogOut } from 'lucide-react'
-import { signOutAction } from '@/app/(auth)/actions'
+import { signOutAction } from '@/features/auth/auth-actions'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
