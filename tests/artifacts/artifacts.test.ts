@@ -752,7 +752,7 @@ describe('the meta line', () => {
 /**
  * Longer than one prompt can hold, with the sentence that matters at the
  * very end. That is the spot the similarity search could never reach, and
- * the reason #55 exists. Same shape as in features/chat/context.search.test.ts.
+ * the reason #55 exists. Same shape as in tests/chat/context.search.test.ts.
  */
 function tooLongForOnePrompt(needle: string) {
   const filler = 'Das Gremium tagte, ohne einen Beschluss zu fassen. '
