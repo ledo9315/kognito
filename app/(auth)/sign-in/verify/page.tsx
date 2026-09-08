@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { AuthForm } from '@/app/(auth)/auth-form'
+import { AuthForm } from '@/features/auth/components/auth-form'
 import { getSession } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
